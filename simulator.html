@@ -598,13 +598,18 @@ body.left-collapsed #right-panel .panel-section{
 
 body.mobile {
   grid-template-columns: 1fr;
-  grid-template-rows: 1fr 52px 220px; /* キャンバス / 下バー / 花を追加 */
+  grid-template-rows: auto 52px 220px; /* キャンバス(16:9固定) / 下バー / 花を追加 */
+  align-content: start;
 }
+
 body.mobile #resizer { display: none; }
 body.mobile #canvas {
   grid-column: 1 / -1;
   grid-row: 1 / 2;
   margin: 10px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  align-self: start;
 }
 body.mobile #flower-panel {
   grid-column: 1 / -1;
@@ -1630,6 +1635,11 @@ function setLeftCollapsed(collapsed) {
 }
 
 leftToggleBtn.addEventListener("click", () => {
+  // スマホUIでは「パネルを閉じる」＝パネルを非表示
+  if (document.body.classList.contains("mobile")) {
+    closeMobilePanels();
+    return;
+  }
   const collapsed = document.body.classList.contains("left-collapsed");
   setLeftCollapsed(!collapsed);
 });
@@ -2151,6 +2161,21 @@ canvas.addEventListener("click", (e) => {
 });
 
 
+// スマホ：空白（または背景）タップで選択解除 & パネルを閉じる
+canvas.addEventListener("pointerdown", (e) => {
+  if (!document.body.classList.contains("mobile")) return;
+  if (e.pointerType !== "touch") return;
+  if (pinAddMode) return;
+  if (isInkActive()) return;
+  if (e.target !== canvas && e.target !== bgLayer) return;
+  clearSelection();
+  clearPinSelection();
+  syncPlacedColorUI();
+  updateSelectionDependentUI();
+  updatePinButtons();
+  closeMobilePanels();
+}, { passive: true });
+
 /* =========================================================
    矩形範囲選択（ドラッグで複数選択）
    - キャンバス空白（または背景）をドラッグすると、範囲に入った花をすべて選択
@@ -2372,7 +2397,107 @@ function makeDraggable(el) {
         document.addEventListener("mousemove", moveDrag);
         document.addEventListener("mouseup", stopDrag, { once: true });
     });
+
+    // ---- スマホ（タッチ）用：ドラッグ移動 & 長押しで複数選択 ----
+    el.addEventListener("pointerdown", (e) => {
+        if (!document.body.classList.contains("mobile")) return;
+        if (e.pointerType !== "touch") return;
+        e.stopPropagation();
+        // iOSでのスクロール誤作動を抑える
+        e.preventDefault();
+
+        if (isInkActive()) return;   // ペン中は花操作しない
+        if (pinAddMode) return;      // ピン追加モードはキャンバス側が担当
+
+        let longPressFired = false;
+        const pressTimer = setTimeout(() => {
+            longPressFired = true;
+            toggleSelect(el);  // 追加/解除
+            syncScaleSlider();
+            suppressNextClick = true;
+        }, 420);
+
+        dragging = true;
+        didMove = false;
+
+        startClientX = e.clientX;
+        startClientY = e.clientY;
+
+        const ensureStartPositions = () => {
+            startPositions = new Map();
+            selectedFlowers.forEach(f => {
+                startPositions.set(f, {
+                    x: parseFloat(f.style.left || "0"),
+                    y: parseFloat(f.style.top  || "0")
+                });
+            });
+        };
+        ensureStartPositions();
+
+        const onMove = (ev) => {
+            if (!dragging) return;
+            const dx0 = ev.clientX - startClientX;
+            const dy0 = ev.clientY - startClientY;
+
+            // 4px以上動いたら「長押し」はキャンセルしてドラッグ扱い
+            if (!didMove && (dx0*dx0 + dy0*dy0) >= 16) {
+                clearTimeout(pressTimer);
+                didMove = true;
+
+                // この花が未選択なら、ドラッグ対象をこの花だけにする
+                if (!selectedFlowers.has(el)) {
+                    clearSelection();
+                    toggleSelect(el);
+                    syncScaleSlider();
+                }
+
+                startClientX = ev.clientX;
+                startClientY = ev.clientY;
+                ensureStartPositions();
+            }
+
+            if (!didMove) return;
+
+            const dx = ev.clientX - startClientX;
+            const dy = ev.clientY - startClientY;
+
+            selectedFlowers.forEach(f => {
+                const p = startPositions.get(f);
+                if (!p) return;
+                f.style.left = (p.x + dx) + "px";
+                f.style.top  = (p.y + dy) + "px";
+            });
+        };
+
+        const onUp = () => {
+            clearTimeout(pressTimer);
+            dragging = false;
+
+            document.removeEventListener("pointermove", onMove);
+
+            if (longPressFired) return;
+
+            // タップ＝単一選択（移動していない場合）
+            if (!didMove) {
+                if (!selectedFlowers.has(el)) {
+                    clearSelection();
+                    toggleSelect(el);
+                    syncScaleSlider();
+                }
+                return;
+            }
+
+            // 移動確定
+            selectedFlowers.forEach(f => setRelFromElement(f));
+            pushHistory();
+        };
+
+        document.addEventListener("pointermove", onMove, { passive: true });
+        document.addEventListener("pointerup", onUp, { once: true });
+        document.addEventListener("pointercancel", onUp, { once: true });
+    }, { passive: false });
 }
+
 
 /* =========================================================
    回転
@@ -3855,10 +3980,18 @@ window.addEventListener("load", () => {
     <div class="help-body">
       <h4>基本</h4>
       <ul>
-        <li>花の追加：下部の花画像をドラッグ＆ドロップ</li>
+        <li>花の追加：下部の花画像を（PC：ドラッグ＆ドロップ／スマホ：タップ）</li>
         <li>選択：クリックで単一選択</li>
         <li>複数選択：<b>Shift + クリック</b>／<b>Ctrl + クリック</b>／<b>Shift + 範囲ドラッグ</b></li>
         <li>範囲選択：キャンバスの空白（または背景）をドラッグ</li>
+      </ul>
+
+      <h4>スマホUI</h4>
+      <ul>
+        <li>花の移動：配置した花を指でドラッグ</li>
+        <li>複数選択：花を<b>長押し</b>で選択を追加／解除</li>
+        <li>複数移動：複数選択中の花をドラッグすると、まとめて移動</li>
+        <li>パネル：上部の「装花タイプ」「操作」から開閉（背景タップでも閉じる）</li>
       </ul>
 
       <h4>コピー（複製）</h4>
