@@ -759,17 +759,17 @@ body.mobile .flower-item.tap-add-armed {
 
 /* ===== モバイル：パネル内の文字・操作を大きめに ===== */
 body.mobile #left-panel,
-body.mobile #right-panel{ font-size: 16px; }
+body.mobile #right-panel{ font-size: 18px; }
 body.mobile #left-panel h3,
-body.mobile #right-panel h3{ font-size: 18px; }
+body.mobile #right-panel h3{ font-size: 20px; }
 body.mobile #left-panel h4,
-body.mobile #right-panel h4{ font-size: 16px; }
+body.mobile #right-panel h4{ font-size: 18px; }
 body.mobile #left-panel button,
 body.mobile #right-panel button,
 body.mobile #controls button,
 body.mobile #controls select{
-  font-size: 16px;
-  height: 44px;
+  font-size: 18px;
+  height: 52px;
 }
 
 body.mobile #left-header{ display:none; }
@@ -914,10 +914,11 @@ body.mobile #left-header{ display:none; }
 
     <div class="sub-section" style="margin-left:0;">
       <h4>クリア</h4>
+      <button id="deleteSelectedBtn" onclick="deleteSelected()">選択中の花を削除</button>
+
       <button id="clearAllBtn" type="button" disabled>すべてクリア</button>
     </div>
 
-    <!-- ★色変更：見えない問題を避けるため上部に配置 -->
     <div class="sub-section" style="margin-left:0;">
       <h4>色変更</h4>
       <select id="placedColorSelect"></select>
@@ -925,19 +926,6 @@ body.mobile #left-header{ display:none; }
         ※複数の色の花を選択時、色は空欄になります。<br>
         ※複数の花を選択した状態で色を変更した時、色に対応していない花の色は変更されません。
       </div>
-    </div>
-
-
-    <div class="sub-section">
-      <h4>付箋/コメント</h4>
-      <button id="addPinBtn" type="button">ピンを追加</button>
-      <button id="editPinBtn" type="button" disabled>ピンを編集</button>
-      <button id="deletePinBtn" type="button" disabled>ピンを削除</button>
-      <div class="small-note">
-        ※「ピンを追加」を押した後、キャンバスをクリックすると配置できます。<br>
-        ※ピンはドラッグで移動できます。ダブルクリックで編集できます。
-      </div>
-    </div>
 
     <div class="sub-section">
       <h4>回転（押し続けて回転）</h4>
@@ -954,9 +942,15 @@ body.mobile #left-header{ display:none; }
     </div>
 
     <div class="sub-section">
-      <h4>削除</h4>
-      <button id="deleteSelectedBtn" onclick="deleteSelected()">選択中の花を削除</button>
-    </div>
+      <h4>付箋/コメント</h4>
+      <button id="addPinBtn" type="button">ピンを追加</button>
+      <button id="editPinBtn" type="button" disabled>ピンを編集</button>
+      <button id="deletePinBtn" type="button" disabled>ピンを削除</button>
+      <div class="small-note">
+        ※画面内にピンを追加して、テキストを挿入することができます<br>
+        ※「ピンを追加」を押した後、キャンバスをクリックすると配置できます。<br>
+        ※ピンはドラッグで移動できます。ダブルクリックで編集できます。
+      </div>
 
     <div class="sub-section">
       <h4>保存・読み込み</h4>
@@ -966,7 +960,7 @@ body.mobile #left-header{ display:none; }
       <input id="layoutFileInput" type="file" accept=".json,application/json">
     </div>
 
-  </div>
+</div>
 </div>
 
 <div id="flower-panel">
@@ -1013,7 +1007,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v6";
+const APP_VERSION = "v8";
 
 
 /* =========================================================
