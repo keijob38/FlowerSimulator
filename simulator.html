@@ -507,6 +507,28 @@ body.left-collapsed #right-panel .panel-section{
   display: none;
 }
 
+#mobileHelpOverlay{
+  position: absolute;
+  top: 10px;
+  right: 10px; /* グリッド表示（左上）と被らない */
+  z-index: 12000;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.25;
+  color: #111;
+  display: none;
+  max-width: min(70vw, 260px);
+}
+#mobileHelpOverlay .mhelp-title{
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+#mobileHelpOverlay .mhelp-line{ margin: 2px 0; }
+body.mobile #mobileHelpOverlay{ display: block; }
+
 /* 花一覧の白背景は内容幅だけ（横幅いっぱいにしない） */
 #flower-list {
   display: inline-flex;
@@ -646,11 +668,7 @@ body.mobile #mobileTopBar .title {
   opacity: 0.9;
 }
 
-body.mobile #mobileBackdrop {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 19000;
+body.mobile h00;
   background: rgba(0,0,0,0.35);
 }
 body.mobile #mobileBackdrop.show { display: block; }
@@ -835,10 +853,11 @@ body.mobile .flower-item.tap-add-armed {
   <!-- モバイル：簡易操作ガイド（常時表示） -->
   <div id="mobileHelpOverlay" aria-hidden="true">
     <div class="mhelp-title">操作ヒント</div>
-    <div class="mhelp-line">・花：ドラッグで移動</div>
-    <div class="mhelp-line">・複数選択：花を長押しで追加/解除</div>
     <div class="mhelp-line">・追加：下の花をタップ → 置きたい位置をタップ</div>
+    <div class="mhelp-line">・移動：花をドラッグ</div>
+    <div class="mhelp-line">・複数選択：花を長押しで追加/解除</div>
     <div class="mhelp-line">・ピン：右の「ピンを追加」→ 置きたい位置をタップ</div>
+    <div class="mhelp-line">・ペン：左の「ペンモードを有効化」→ 指で描画（消しゴム/太さ/色も変更可）</div>
   </div>
 
 </div>
