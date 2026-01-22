@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>装花レイアウトシミュレータ</title>
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #f5f5f5;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+  }
+  .card {
+    width: min(560px, 94vw);
+    background: #fff;
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 14px 36px rgba(0,0,0,0.12);
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  h1 { font-size: 18px; margin: 0 0 10px 0; }
+  p  { margin: 0 0 14px 0; font-size: 13px; color: #333; line-height: 1.55; }
+  .row { display: flex; gap: 10px; }
+  button { flex: 1; height: 44px; border-radius: 14px; font-size: 15px; cursor: pointer; }
+  .small { font-size: 12px; color: #666; margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>装花レイアウトシミュレータ</h1>
+    <p>
+      PC/スマホどちらでも利用できます。初回は、端末に合わせたUIを選択できます。<br>
+      いつでも、端末内の保存設定（localStorage）を消すと再選択できます。
+    </p>
+    <div class="row">
+      <button id="openDesktop" type="button">PC用で開く</button>
+      <button id="openMobile" type="button">スマホ用で開く</button>
+    </div>
+    <div class="small">
+      ※実体は <code>simulator.html</code> です（フォルダ構成はそのままアップロードしてください）。
+    </div>
+  </div>
+
+<script>
+  function go(mode) {
+    try { localStorage.setItem("uiMode", mode); } catch {}
+    location.href = "simulator.html";
+  }
+  document.getElementById("openDesktop").addEventListener("click", () => go("desktop"));
+  document.getElementById("openMobile").addEventListener("click", () => go("mobile"));
+</script>
+</body>
+</html>

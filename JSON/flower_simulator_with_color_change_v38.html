@@ -1,0 +1,2680 @@
+<!DOCTYPE html>
+<!--
+============================================================
+【ユーザー設定（ここを編集）】※検索しやすいキーワード付き
+============================================================
+
+このHTMLは file://（サーバ不要）で動作するため、ブラウザの制約により
+flowers/ や background/ の「フォルダ一覧を自動探索してテーブルを自動生成」
+は原則できません（ローカルのディレクトリ列挙が禁止されています）。
+→ その代わり、以下のテーブルを編集する方式にしています。
+
+■ 背景（装花タイプ）のツリー
+  編集箇所：STYLE_TREE
+  検索キーワード：STYLE_TREE
+  背景画像パス：background/<グループ>/<タイプ>/background.png
+
+■ 花カテゴリ（下部のプルダウン）
+  編集箇所：FLOWER_CATEGORIES
+  検索キーワード：FLOWER_CATEGORIES
+
+■ 花ごとの対応色（花により色が異なる前提）
+  編集箇所：FLOWER_COLOR_OPTIONS
+  検索キーワード：FLOWER_COLOR_OPTIONS
+
+■ 花画像ファイル名ルール
+  flowers/<花フォルダ>/<番号>_<色>.png
+  例：flowers/バラ/1_赤.png  flowers/バラ/1_オレンジ.png
+
+============================================================
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>結婚式 装花イメージシミュレーター</title>
+<style>
+:root{
+  --leftw: 320px;
+  --vresizer: 8px;
+  --rightw: 260px;
+}
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+  display: grid;
+  grid-template-columns: var(--leftw) var(--vresizer) 1fr var(--rightw);
+  grid-template-rows: 1fr 220px;
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+/* 左パネル */
+#left-panel {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  background: #fff;
+  border-right: 1px solid #ccc;
+  padding: 10px;
+  overflow: auto;
+}
+
+/* 左パネル上部ヘッダ */
+#left-header{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+#leftToggleBtn{
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+#leftHeaderTitle{
+  font-weight: 700;
+  color: #333;
+  font-size: 14px;
+}
+
+/* 縦リサイズバー */
+#v-resizer {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+  background: #ddd;
+  cursor: col-resize;
+}
+
+/* 中央キャンバス */
+#canvas {
+  grid-column: 3 / 4;
+  grid-row: 1 / 2;
+  margin: 20px;
+  background: #fafafa;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 背景画像（最背面） */
+#bgLayer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 描画レイヤー */
+#drawLayer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* 右パネル */
+#right-panel {
+  grid-column: 4 / 5;
+  grid-row: 1 / 2;
+  background: #fff;
+  border-left: 1px solid #ccc;
+  padding: 10px;
+  overflow: auto;
+}
+
+/* 下パネル（固定） */
+#flower-panel {
+  grid-column: 1 / 5;
+  grid-row: 2 / 3;
+  background: #fff;
+  border-top: 1px solid #ccc;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+#flower-panel-title {
+  font-weight: 700;
+  margin: 0;
+}
+
+#controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* パネルセクション */
+.panel-section {
+  border-top: 1px solid #ddd;
+  padding-top: 8px;
+  margin-top: 8px;
+}
+.panel-section h3 {
+  margin: 4px 0 8px 0;
+}
+
+/* 装花タイプの縦ボタン */
+.vertical-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vertical-buttons button {
+  width: 100%;
+  padding: 10px;
+  cursor: pointer;
+}
+
+/* 操作のサブセクション */
+.sub-section {
+  margin-left: 6px;
+  margin-bottom: 10px;
+}
+.sub-section h4 {
+  margin: 6px 0 6px 0;
+  font-size: 0.95em;
+}
+
+/* UI統一 */
+#controls select,
+#controls button,
+#right-panel button,
+#left-panel button,
+#left-panel input[type="range"],
+#right-panel input[type="range"],
+#right-panel select{
+  font-size: 16px;
+  padding: 8px 10px;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+#right-panel button {
+  width: 100%;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+#right-panel select { width: 100%; margin-bottom: 6px; }
+
+#right-panel button:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#layoutFileInput { display: none; }
+
+/* 花一覧（下） */
+#flower-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: center;
+  padding-bottom: 4px;
+}
+
+/* 下部一覧の花（ドラッグ元） */
+.flower-item {
+  border-radius: 50%;
+  cursor: grab;
+  object-fit: contain;
+  background: #fff;
+}
+
+/* キャンバス上の花 */
+.flower-on-canvas {
+  position: absolute;
+  cursor: move;
+  transform-origin: center center;
+  border-radius: 50%;
+  box-sizing: border-box;
+  user-select: none;
+  z-index: 10;
+}
+
+/* 選択ハイライト */
+.flower-selected {
+  outline: 3px solid #2f80ed;
+  outline-offset: 2px;
+}
+
+/* ===== ペンUI ===== */
+.pen-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.pen-row button {
+  flex: 1;
+  height: 44px;
+  font-size: 14px;
+  padding: 6px 6px;
+  cursor: pointer;
+  white-space: normal;
+  line-height: 1.1;
+  overflow: hidden;
+}
+.pen-row button.active {
+  outline: 2px solid #2f80ed;
+}
+
+.small-note {
+  font-size: 12px;
+  color: #555;
+  margin-top: 6px;
+}
+
+/* ===== 色UI（プリセット→グラデーション） ===== */
+#colorPickerWrap {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.paletteTitle {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 4px;
+}
+
+/* プリセットは1行固定（横スクロール） */
+.swatchRow {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+.swatchRow::-webkit-scrollbar { height: 8px; }
+
+.swatchBtn {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #999;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* グラデーション（SV） */
+#svCanvas {
+  width: 100%;
+  height: 130px;
+  border-radius: 10px;
+  border: 1px solid #bbb;
+  cursor: crosshair;
+  touch-action: none;
+  display: block;
+}
+#hueBar { width: 100%; }
+
+/* 現在の色 */
+#currentColorRow{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#colorPreview {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #aaa;
+  flex: 0 0 auto;
+}
+
+/* 左パネル折り畳み */
+body.left-collapsed{
+  --leftw: 56px;
+  --vresizer: 0px;
+  --rightw: 56px;
+}
+body.left-collapsed #v-resizer{ display: none; }
+body.left-collapsed #left-panel{
+  overflow: hidden;
+  padding: 8px 6px;
+}
+body.left-collapsed #leftHeaderTitle{ display: none; }
+body.left-collapsed #left-panel .panel-section{ display: none; }
+
+body.left-collapsed #right-panel{
+  padding: 8px 6px;
+  overflow: hidden;
+}
+body.left-collapsed #right-panel .panel-section{
+  display: none;
+}
+
+/* 矩形範囲選択（マルチセレクト） */
+#selectionBox{
+  position: absolute;
+  border: 2px dashed #2f80ed;
+  background: rgba(47,128,237,0.12);
+  border-radius: 6px;
+  display: none;
+  z-index: 5000; /* 花より前、描画レイヤーより下 */
+  pointer-events: none;
+  user-select: none;
+}
+
+
+/* ===== 装花タイプ（ツリー） ===== */
+#styleTree{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tree-group{
+  border: 1px solid #e2e2e2;
+  border-radius: 10px;
+  padding: 8px;
+}
+.tree-group-btn{
+  width: 100%;
+  height: 40px;
+  cursor: pointer;
+  font-weight: 700;
+  text-align: left;
+  padding: 8px 10px;
+}
+.tree-children{
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tree-leaf-btn{
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  padding: 10px;
+}
+.tree-leaf-btn .indent{
+  display: inline-block;
+  width: 14px;
+}
+.tree-selected{
+  outline: 2px solid #2f80ed;
+  outline-offset: 2px;
+}
+
+
+/* ===== 操作方法モーダル ===== */
+#helpOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+}
+#helpDialog{
+  width: min(720px, calc(100vw - 24px));
+  max-height: min(78vh, 720px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 14px 10px 14px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+}
+#helpDialog h4{
+  margin: 14px 0 6px 0;
+}
+#helpDialog ul{
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+.help-body{
+  font-size: 14px;
+  line-height: 1.45;
+  color: #222;
+}
+
+
+/* ===== ポップ調の見た目（任意） =====
+   ToolFrame/frame.png を用意すると各パネルの背景にタイル表示されます（無ければ従来どおり白背景）。
+   推奨：256x256〜512x512程度の繰り返しパターン（PNG）
+*/
+#left-panel, #right-panel, #flower-panel {
+  background-image: url("ToolFrame/frame.png");
+  background-repeat: repeat;
+  background-size: auto;
+  background-color: #fff; /* 画像が無い場合のフォールバック */
+}
+
+#left-panel button, #right-panel button, #controls select, #controls button {
+  border-radius: 12px;
+}
+
+#right-panel button, #left-panel button {
+  border: 1px solid rgba(0,0,0,0.12);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+}
+
+/* 花一覧の画像部分だけ見やすく（背景フレームの影響を受けない） */
+#flower-list {
+  background: #fff;
+  border-radius: 14px;
+  padding: 6px 8px;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+/* ボタン：ホバーで少し浮く／押下で沈む（やりすぎない程度） */
+#left-panel button, #right-panel button, #controls button {
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+}
+#left-panel button:hover, #right-panel button:hover, #controls button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.10);
+}
+#left-panel button:active, #right-panel button:active, #controls button:active {
+  transform: translateY(0px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="left-panel">
+  <div id="left-header">
+    <button id="leftToggleBtn" type="button" title="左パネルを折り畳み">◀</button>
+    <div id="leftHeaderTitle">パネルを閉じる</div>
+  </div>
+
+  <div class="panel-section" style="border-top:none; padding-top:0; margin-top:0;">
+    <h3>装花タイプ</h3>
+    <div id="styleTree"></div>
+  </div>
+
+  <div class="panel-section">
+    <h3>ペン</h3>
+
+    <button id="penEnableBtn" type="button">ペンを解除（花操作）</button>
+
+    <div class="pen-row" style="margin-top:6px;">
+      <button id="penBtn" type="button" class="active">ペン</button>
+      <button id="eraserBtn" type="button" title="消しゴム">消しゴム</button>
+      <button id="clearInkBtn" type="button" title="クリア">クリア</button>
+    </div>
+
+    <div id="colorPickerWrap">
+      <div>
+        <div class="paletteTitle">現在の色</div>
+        <div id="currentColorRow">
+          <div id="colorPreview" title="現在の色"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="paletteTitle">プリセット</div>
+        <div id="presetSwatches" class="swatchRow"></div>
+      </div>
+
+      <div>
+        <div class="paletteTitle">グラデーション</div>
+        <canvas id="svCanvas"></canvas>
+        <input id="hueBar" type="range" min="0" max="360" value="210">
+      </div>
+
+      <div class="pen-row" style="margin-top:2px;">
+        <div style="font-size:12px; color:#555; width:42px;">太さ</div>
+        <input id="wBar" type="range" min="1" max="30" value="6" style="flex:1;">
+        <div id="wVal" style="font-size:12px; width:32px; text-align:right;">6</div>
+      </div>
+
+      <div class="small-note">
+        ※ペンON中は花を動かせません。<br>
+        ※花一覧（下）の画像をクリックすると自動でペン解除します。<br>
+        ※色はプリセット/グラデーションから選べます。
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="v-resizer" title="左右にドラッグして左パネル幅を変更"></div>
+
+<div id="canvas">
+  <img id="bgLayer" alt="" />
+    <div id="selectionBox"></div>
+  <canvas id="drawLayer"></canvas>
+</div>
+
+<div id="right-panel">
+  <div class="panel-section" style="border-top:none; padding-top:0; margin-top:0;">
+    <h3>操作</h3>
+
+    <button id="helpBtn" type="button">操作方法</button>
+
+
+    <!-- 戻る/やり直す（最上段） -->
+    <div class="sub-section" style="margin-left:0;">
+      <button id="undoBtn" type="button">戻る</button>
+      <button id="redoBtn" type="button">やり直す</button>
+      <!-- ★ここに「すべてクリア」を移動 -->
+      <button id="clearAllBtn" type="button">すべてクリア</button>
+    </div>
+
+    <!-- ★色変更：見えない問題を避けるため上部に配置 -->
+    <div class="sub-section" style="margin-left:0;">
+      <h4>色変更</h4>
+      <select id="placedColorSelect"></select>
+      <div style="font-size:12px; color:#666; margin-top:4px;">
+        ※複数の色の花を選択時、色は空欄になります.<br>
+        ※複数の花を選択した状態で色を変更したとき、色に対応していない花の色は変更されません。
+      </div>
+    </div>
+
+    <div class="sub-section">
+      <h4>回転（押し続けて回転）</h4>
+      <button id="rotateLeftBtn" type="button">左に回転</button>
+      <button id="rotateRightBtn" type="button">右に回転</button>
+    </div>
+
+    <div class="sub-section">
+      <h4>重なり順</h4>
+      <button onclick="bringForward()">前面に移動</button>
+      <button onclick="sendBackward()">背面に移動</button>
+      <button onclick="bringToFront()">最前面に移動</button>
+      <button onclick="sendToBack()">最背面に移動</button>
+    </div>
+
+    <div class="sub-section">
+      <h4>削除</h4>
+      <button onclick="deleteSelected()">選択中の花を削除</button>
+    </div>
+
+    <div class="sub-section">
+      <h4>保存・読み込み</h4>
+      <button onclick="saveLayout()">配置を保存</button>
+      <button id="loadLayoutBtn" type="button">保存済み配置を読み込み</button>
+      <input id="layoutFileInput" type="file" accept=".json,application/json">
+    </div>
+
+  </div>
+</div>
+
+<div id="flower-panel">
+  <h3 id="flower-panel-title">花を追加</h3>
+
+  <div id="controls">
+    <label>カテゴリ</label>
+    <select id="categorySelect"></select>
+
+    <label>花の種類</label>
+    <select id="flowerSelect"></select>
+
+    <label>色</label>
+    <select id="colorSelect"></select>
+  </div>
+
+  <div id="flower-list"></div>
+</div>
+
+<script>
+
+/* =========================================================
+   花カテゴリ設定
+========================================================= */
+/* =========================
+   USER CONFIG TABLE: FLOWER_CATEGORIES
+   Search keyword: FLOWER_CATEGORIES
+========================= */
+const FLOWER_CATEGORIES = [
+  {
+    category: "定番",
+    flowers: [
+      { folder: "バラ", label: "バラ" },
+      { folder: "チューリップ", label: "チューリップ" },
+    ]
+  },
+  {
+    category: "可憐",
+    flowers: [
+      { folder: "ユリ", label: "ユリ" }
+    ]
+  }
+];
+
+/* =========================================================
+   ★色仕様（暫定）
+========================================================= */
+/* =========================
+   USER CONFIG TABLE: FLOWER_COLOR_OPTIONS
+   Search keyword: FLOWER_COLOR_OPTIONS
+   花フォルダごとの対応色（配列）を定義してください。
+   ※未定義の花は DEFAULT_FLOWER_COLORS を使用します。
+========================= */
+const DEFAULT_FLOWER_COLORS = ["赤", "オレンジ"];
+
+const FLOWER_COLOR_OPTIONS = {
+  "バラ": ["赤", "オレンジ"],
+  "チューリップ": ["赤", "オレンジ", "黄色"],
+  "ユリ": ["白"],
+};
+
+/* =========================================================
+   仮想座標系（16:9固定）
+   背景画像は全て 16:9 で作成する前提のため、式場ごとに解像度テーブルは不要です。
+   ※ここは基本的に編集不要です（比率が16:9なら数値は任意）。
+========================================================= */
+const DESIGN_CANVAS_SIZE = { w: 1600, h: 900 };
+
+// プログラム側からは getAvailableColors(folderName) を呼びます（互換用）
+function getAvailableColors(folderName) {
+  if (!folderName) return [...DEFAULT_FLOWER_COLORS];
+  const colors = FLOWER_COLOR_OPTIONS[folderName];
+  if (Array.isArray(colors) && colors.length) return [...colors];
+  return [...DEFAULT_FLOWER_COLORS];
+}
+
+/* =========================================================
+   参照
+========================================================= */
+const canvas = document.getElementById("canvas");
+const bgLayer = document.getElementById("bgLayer");
+const flowerList = document.getElementById("flower-list");
+const categorySelect = document.getElementById("categorySelect");
+const flowerSelect = document.getElementById("flowerSelect");
+const colorSelect = document.getElementById("colorSelect");
+
+const layoutFileInput = document.getElementById("layoutFileInput");
+const loadLayoutBtn = document.getElementById("loadLayoutBtn");
+const undoBtn = document.getElementById("undoBtn");
+const redoBtn = document.getElementById("redoBtn");
+const rotateLeftBtn = document.getElementById("rotateLeftBtn");
+const rotateRightBtn = document.getElementById("rotateRightBtn");
+const clearAllBtn = document.getElementById("clearAllBtn");
+
+/* 配置済み花の色変更UI（右パネル） */
+const placedColorSelect = document.getElementById("placedColorSelect");
+
+/* 左パネル折り畳み */
+const leftToggleBtn = document.getElementById("leftToggleBtn");
+
+let selectedFlowers = new Set();
+let zCounter = 1;
+
+// キャンバスサイズ変更時に花の相対位置を保つため、前回サイズを記録して比率でスケール
+let lastCanvasW = 0;
+let lastCanvasH = 0;
+// 通常（パネル開）時の基準キャンバスサイズ（追加サイズ算出に使用）
+let baseCanvasW = 0;
+let baseCanvasH = 0;
+
+// ===== 花の「相対座標」管理（ウィンドウサイズ変更でも背景との位置関係を維持） =====
+// left/top/width/height をキャンバスの割合（0-1）で保持し、レイアウト変化時に再計算する。
+// 背景が縦横別倍率で伸びる前提（object-fit: fill 相当）なので、花も縦横別倍率で追従させる（歪みは許容）。
+function getCanvasWH() {
+  return { w: Math.max(1, canvas.clientWidth), h: Math.max(1, canvas.clientHeight) };
+}
+
+function setRelFromElementWithWH(el, w, h) {
+  const left = parseFloat(el.style.left || "0");
+  const top  = parseFloat(el.style.top || "0");
+  const ew   = parseFloat(el.style.width || "0");
+  const eh   = parseFloat(el.style.height || "0");
+  const ww = Math.max(1, w);
+  const hh = Math.max(1, h);
+  el.dataset.rx = String(left / ww);
+  el.dataset.ry = String(top / hh);
+  el.dataset.rw = String(ew / ww);
+  el.dataset.rh = String(eh / hh);
+}
+
+function setRelFromElement(el) {
+  const { w, h } = getCanvasWH();
+  const left = parseFloat(el.style.left || "0");
+  const top  = parseFloat(el.style.top || "0");
+  const ew   = parseFloat(el.style.width || "0");
+  const eh   = parseFloat(el.style.height || "0");
+  el.dataset.rx = String(left / w);
+  el.dataset.ry = String(top / h);
+  el.dataset.rw = String(ew / w);
+  el.dataset.rh = String(eh / h);
+}
+
+function applyElementFromRel(el) {
+  const { w, h } = getCanvasWH();
+  const rx = parseFloat(el.dataset.rx || "0");
+  const ry = parseFloat(el.dataset.ry || "0");
+  const rw = parseFloat(el.dataset.rw || "0");
+  const rh = parseFloat(el.dataset.rh || "0");
+  el.style.left = (rx * w) + "px";
+  el.style.top  = (ry * h) + "px";
+  el.style.width  = Math.max(1, rw * w) + "px";
+  el.style.height = Math.max(1, rh * h) + "px";
+}
+
+function ensureRelForAllFlowers() {
+  // 既に相対座標を持っている花は上書きしない（リサイズ時に上書きするとズレの原因になる）
+  // 相対座標が無い花（旧データなど）だけ、直前のキャンバスサイズ（lastCanvasW/H）を基準に作る。
+  const prevW = (typeof lastCanvasW === "number" && lastCanvasW > 0) ? lastCanvasW : canvas.clientWidth;
+  const prevH = (typeof lastCanvasH === "number" && lastCanvasH > 0) ? lastCanvasH : canvas.clientHeight;
+
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => {
+    if (el.dataset.rx == null || el.dataset.ry == null || el.dataset.rw == null || el.dataset.rh == null) {
+      setRelFromElementWithWH(el, prevW, prevH);
+    }
+  });
+}
+
+function applyAllRelFlowers() {
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => applyElementFromRel(el));
+}
+
+// ===== 花の「仮想座標」管理（背景の縮尺に追従させるため） =====
+// ブラウザのサイズやパネル開閉でキャンバス表示サイズが変わっても、背景（object-fit: fill）と同じ縦横倍率で
+// 花も追従して伸び縮みするように、花の left/top/width/height を「仮想座標系（DESIGN_CANVAS_SIZE）」で保持する。
+function getCanvasWH() {
+  return { w: Math.max(1, canvas.clientWidth), h: Math.max(1, canvas.clientHeight) };
+}
+
+function toVirtualX(px, cw) { return (px / cw) * DESIGN_CANVAS_SIZE.w; }
+function toVirtualY(px, ch) { return (px / ch) * DESIGN_CANVAS_SIZE.h; }
+function toPixelX(vx, cw) { return (vx / DESIGN_CANVAS_SIZE.w) * cw; }
+function toPixelY(vy, ch) { return (vy / DESIGN_CANVAS_SIZE.h) * ch; }
+
+function setVirtualFromElement(el) {
+  const { w: cw, h: ch } = getCanvasWH();
+  const left = parseFloat(el.style.left || "0");
+  const top  = parseFloat(el.style.top  || "0");
+  const ew   = parseFloat(el.style.width || "0");
+  const eh   = parseFloat(el.style.height|| "0");
+  el.dataset.vx = String(toVirtualX(left, cw));
+  el.dataset.vy = String(toVirtualY(top,  ch));
+  el.dataset.vw = String(toVirtualX(ew,   cw));
+  el.dataset.vh = String(toVirtualY(eh,   ch));
+}
+
+function applyElementFromVirtual(el) {
+  const { w: cw, h: ch } = getCanvasWH();
+  const vx = parseFloat(el.dataset.vx || "0");
+  const vy = parseFloat(el.dataset.vy || "0");
+  const vw = parseFloat(el.dataset.vw || "0");
+  const vh = parseFloat(el.dataset.vh || "0");
+  el.style.left = toPixelX(vx, cw) + "px";
+  el.style.top  = toPixelY(vy, ch) + "px";
+  el.style.width  = Math.max(1, toPixelX(vw, cw)) + "px";
+  el.style.height = Math.max(1, toPixelY(vh, ch)) + "px";
+}
+
+function ensureVirtualForAllFlowers() {
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => {
+    if (el.dataset.vx == null || el.dataset.vy == null || el.dataset.vw == null || el.dataset.vh == null) {
+      setVirtualFromElement(el);
+    }
+  });
+}
+
+function applyAllVirtualFlowers() {
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => applyElementFromVirtual(el));
+}
+
+function rememberCanvasSize() {
+  lastCanvasW = canvas.clientWidth || lastCanvasW;
+  lastCanvasH = canvas.clientHeight || lastCanvasH;
+
+  // 左パネルが通常表示のときは基準サイズを更新（折り畳み時の追加サイズのブレ防止）
+  if (!document.body.classList.contains("left-collapsed")) {
+    baseCanvasW = lastCanvasW;
+    baseCanvasH = lastCanvasH;
+  }
+}
+
+function scaleFlowersToCanvas(prevW, prevH, nextW, nextH) {
+  if (!prevW || !prevH || !nextW || !nextH) return;
+  const sx = nextW / prevW;
+  const sy = nextH / prevH;
+
+  // 背景との相対位置を維持するため、位置のみ比率変換する。
+  // サイズまで変換すると、パネル開閉（リレイアウト）を繰り返した際に
+  // 誤差や基準サイズ更新の影響で「どんどん小さくなる」などの副作用が出やすい。
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => {
+    const left = parseFloat(el.style.left || "0");
+    const top  = parseFloat(el.style.top  || "0");
+    el.style.left = (left * sx) + "px";
+    el.style.top  = (top  * sy) + "px";
+  });
+}
+
+/* ペン */
+const drawLayer = document.getElementById("drawLayer");
+const penEnableBtn = document.getElementById("penEnableBtn");
+const penBtn = document.getElementById("penBtn");
+const eraserBtn = document.getElementById("eraserBtn");
+const clearInkBtn = document.getElementById("clearInkBtn");
+const colorPreview = document.getElementById("colorPreview");
+const wBar = document.getElementById("wBar");
+const wVal = document.getElementById("wVal");
+
+const svCanvas = document.getElementById("svCanvas");
+const hueBar = document.getElementById("hueBar");
+const presetSwatches = document.getElementById("presetSwatches");
+
+/* サイズ固定 */
+function getListSizeFixed() { return 90; }
+function getCanvasSizeFixed() {
+    const requested = Math.round(80 * 1.2);
+    const cw = baseCanvasW || canvas.clientWidth;
+    const ch = baseCanvasH || canvas.clientHeight;
+    const maxByCanvas = Math.min(cw, ch) * 0.28;
+    return Math.min(requested, maxByCanvas);
+}
+function syncScaleSlider() {} // 拡大縮小廃止（互換）
+
+/* =========================================================
+   Undo / Redo
+========================================================= */
+const HISTORY_LIMIT = 60;
+let historyStack = [];
+let redoStack = [];
+let inkDirty = true;
+
+function captureInkDataURL() {
+  try { return drawLayer.toDataURL("image/png"); }
+  catch { return null; }
+}
+
+function captureState() {
+  const items = [];
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => {
+    items.push({
+      src: el.getAttribute("data-src") || el.src,
+      x: el.style.left,
+      y: el.style.top,
+      w: el.style.width,
+      h: el.style.height,
+      r: el.dataset.rotate || "0",
+      s: el.dataset.scale || "1",
+      z: el.style.zIndex || "1"
+    });
+  });
+  items.sort((a,b) => (parseInt(a.z,10)||1) - (parseInt(b.z,10)||1));
+
+  const lastInk = historyStack.length ? historyStack[historyStack.length-1]?.ink : null;
+  const ink = inkDirty ? (captureInkDataURL() || lastInk) : lastInk;
+
+  return { items, ink };
+}
+
+function getInkCtx() {
+  const ctx = drawLayer.getContext("2d");
+  if (!ctx) return null;
+  return ctx;
+}
+
+function applyInkDataURL(dataUrl) {
+  const ctx = getInkCtx();
+  if (!ctx) return;
+
+  ctx.save();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+  ctx.restore();
+
+  if (!dataUrl) return;
+
+  const img = new Image();
+  img.onload = () => {
+    const ctx2 = getInkCtx();
+    if (!ctx2) return;
+    ctx2.save();
+    ctx2.setTransform(1,0,0,1,0,0);
+    ctx2.drawImage(img, 0, 0, drawLayer.width, drawLayer.height);
+    ctx2.restore();
+  };
+  img.src = dataUrl;
+}
+
+function applyState(stateObj) {
+  const items = stateObj?.items || [];
+  const ink = stateObj?.ink || null;
+
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => el.remove());
+  clearSelection();
+
+  let maxZ = 1;
+  for (const it of items) {
+    if (!it || !it.src) continue;
+    const img = createCanvasFlowerFromData(it);
+    canvas.appendChild(img);
+    makeDraggable(img);
+        setRelFromElement(img);
+    setRelFromElement(img);
+    setVirtualFromElement(img);
+    const z = parseInt(img.style.zIndex || "1", 10);
+    maxZ = Math.max(maxZ, isNaN(z) ? 1 : z);
+  }
+  zCounter = Math.max(zCounter, maxZ);
+
+  applyInkDataURL(ink);
+  inkDirty = false;
+
+  syncPlacedColorUI();
+}
+
+function pushHistory() {
+  const state = captureState();
+  const last = historyStack.length ? JSON.stringify(historyStack[historyStack.length-1]) : null;
+  const now = JSON.stringify(state);
+  if (last === now) {
+    updateUndoRedoButtons();
+    inkDirty = false;
+    return;
+  }
+  historyStack.push(state);
+  if (historyStack.length > HISTORY_LIMIT) historyStack.shift();
+  redoStack = [];
+  updateUndoRedoButtons();
+  inkDirty = false;
+}
+
+function undo() {
+  if (historyStack.length <= 1) return;
+  const current = historyStack.pop();
+  redoStack.push(current);
+  const prev = historyStack[historyStack.length - 1];
+  applyState(prev);
+  updateUndoRedoButtons();
+}
+
+function redo() {
+  if (!redoStack.length) return;
+  const next = redoStack.pop();
+  historyStack.push(next);
+  applyState(next);
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+  undoBtn.disabled = (historyStack.length <= 1);
+  redoBtn.disabled = (redoStack.length === 0);
+}
+
+undoBtn.addEventListener("click", () => undo());
+redoBtn.addEventListener("click", () => redo());
+
+document.addEventListener("keydown", (e) => {
+  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  const mod = isMac ? e.metaKey : e.ctrlKey;
+  if (!mod) return;
+
+  const key = (e.key || "").toLowerCase();
+  if (key === "z" && !e.shiftKey) {
+    e.preventDefault();
+    undo();
+  } else if (key === "y" || (key === "z" && e.shiftKey)) {
+    e.preventDefault();
+    redo();
+  }
+}, { passive: false });
+
+/* =========================================================
+   レイアウト変更時の再計算
+========================================================= */
+
+// レイアウト確定待ちのための再レイアウト（全画面切替・アドレスバー出現などでサイズが段階的に変わる対策）
+let stableRelayoutTO = null;
+let stableRelayoutEnd = 0;
+let stableLastW = -1;
+let stableLastH = -1;
+
+
+function normalizeRelForAllFlowers() {
+  // 現在表示されている位置・サイズを基準に、相対座標を再計算して固定する（見た目は変えない）
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => setRelFromElement(el));
+}
+function scheduleRelayoutUntilStable(durationMs = 1800, intervalMs = 120) {
+  const now = performance.now();
+  stableRelayoutEnd = Math.max(stableRelayoutEnd, now + durationMs);
+
+  const { w, h } = getCanvasWH();
+  stableLastW = w;
+  stableLastH = h;
+
+  // 安定判定（サイズ変化が一定回数続けて止まったら終了）
+  let stableCount = 0;
+
+  // まず1回
+  relayoutCanvasesPreserveInk();
+
+  if (stableRelayoutTO) return; // 既に走っている
+
+  const tick = () => {
+    stableRelayoutTO = null;
+
+    const { w: cw, h: ch } = getCanvasWH();
+    const changed = (cw !== stableLastW) || (ch !== stableLastH);
+
+    if (changed) {
+      stableLastW = cw;
+      stableLastH = ch;
+      stableCount = 0;
+      relayoutCanvasesPreserveInk();
+    } else {
+      stableCount++;
+    }
+
+    const timeLeft = performance.now() < stableRelayoutEnd;
+
+    // 連続でサイズ変化なしが4回（約 4*interval）続いたら安定とみなす
+    if (stableCount >= 4 || !timeLeft) {
+      stableRelayoutEnd = 0;
+      // 安定後に相対座標を「最終サイズ」に合わせて再固定（初回起動直後・全画面切替直後のズレ対策）
+      normalizeRelForAllFlowers();
+      return;
+    }
+
+    stableRelayoutTO = setTimeout(tick, intervalMs);
+  };
+
+  stableRelayoutTO = setTimeout(tick, intervalMs);
+}
+
+function relayoutCanvasesPreserveInk() {
+  // 全画面切替などで canvas のサイズが段階的に変わることがある。
+  // ここでは「既に保持している相対座標」を信頼して再配置し、欠けている場合のみ直前サイズで補う。
+  ensureRelForAllFlowers();
+
+  const snap = captureInkDataURL();
+
+  setupInkCanvasSize();
+  try { setupSVCanvasSize(); } catch {}
+  try { drawSV(); } catch {}
+
+  applyAllRelFlowers();
+
+  if (snap) applyInkDataURL(snap);
+
+  rememberCanvasSize();
+}
+
+/* =========================================================
+   左パネル幅リサイズ
+========================================================= */
+const vResizer = document.getElementById("v-resizer");
+let startX = 0;
+let startLeftW = 0;
+
+vResizer.addEventListener("mousedown", (e) => {
+  if (document.body.classList.contains("left-collapsed")) return;
+  startX = e.clientX;
+  startLeftW = document.getElementById("left-panel").offsetWidth;
+  document.body.style.userSelect = "none";
+  document.addEventListener("mousemove", onVResizeMove);
+  document.addEventListener("mouseup", onVResizeUp, { once: true });
+});
+
+function onVResizeMove(e) {
+  const dx = e.clientX - startX;
+  const w = Math.max(260, Math.min(560, startLeftW + dx));
+  document.documentElement.style.setProperty("--leftw", w + "px");
+}
+
+function onVResizeUp() {
+  document.body.style.userSelect = "";
+  document.removeEventListener("mousemove", onVResizeMove);
+  relayoutCanvasesPreserveInk();
+}
+
+/* 左パネル折り畳み */
+let lastExpandedLeftW = 320;
+
+function getCurrentLeftWidth() {
+  const val = getComputedStyle(document.documentElement).getPropertyValue("--leftw").trim();
+  const n = parseInt(val.replace("px",""), 10);
+  return isNaN(n) ? 320 : n;
+}
+
+function setLeftCollapsed(collapsed) {
+  // 開閉前のキャンバスサイズを必ず記録（初回のズレ防止）
+  rememberCanvasSize();
+  if (collapsed) {
+    lastExpandedLeftW = getCurrentLeftWidth();
+    document.body.classList.add("left-collapsed");
+    leftToggleBtn.textContent = "▶";
+    leftToggleBtn.title = "左パネルを展開";
+  } else {
+    document.body.classList.remove("left-collapsed");
+    document.documentElement.style.setProperty("--leftw", Math.max(260, Math.min(560, lastExpandedLeftW)) + "px");
+    document.documentElement.style.setProperty("--vresizer", "8px");
+    document.documentElement.style.setProperty("--rightw", "260px");
+    leftToggleBtn.textContent = "◀";
+    leftToggleBtn.title = "左パネルを折り畳み";
+  }
+  relayoutCanvasesPreserveInk();
+}
+
+leftToggleBtn.addEventListener("click", () => {
+  const collapsed = document.body.classList.contains("left-collapsed");
+  setLeftCollapsed(!collapsed);
+});
+
+/* =========================================================
+   背景画像（装花タイプ：ツリー）
+   背景パス：background/<グループ>/<タイプ>/background.png
+   ※グループ/タイプは可変（STYLE_TREE を編集）
+========================================================= */
+/* =========================
+   USER CONFIG TABLE: STYLE_TREE
+   Search keyword: STYLE_TREE
+========================= */
+const STYLE_TREE = [
+  { group: "メイン", types: ["タイプA", "タイプB", "タイプC"] },
+  { group: "ゲスト", types: ["タイプA", "タイプB", "タイプC"] },
+];
+
+let currentStyle = { group: null, type: null };
+
+function setBackgroundByTree(groupName, typeName) {
+  if (!groupName || !typeName) {
+    bgLayer.removeAttribute("src");
+    return;
+  }
+  const g = encodeURIComponent(groupName);
+  const t = encodeURIComponent(typeName);
+  const path = `background/${g}/${t}/background.png`;
+  bgLayer.src = path + "?t=" + new Date().getTime();
+}
+
+function selectStyle(groupName, typeName) {
+  currentStyle.group = groupName;
+  currentStyle.type = typeName;
+  setBackgroundByTree(groupName, typeName);
+  updateStyleTreeSelection();
+}
+
+function renderStyleTree() {
+  const root = document.getElementById("styleTree");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const groupUIs = []; // {gbtn, children, group}
+
+  function closeAllExcept(keepIndex) {
+    groupUIs.forEach((ui, i) => {
+      const opened = (i === keepIndex);
+      ui.gbtn.textContent = (opened ? "▼ " : "▶ ") + ui.group;
+      ui.children.style.display = opened ? "flex" : "none";
+      ui.opened = opened;
+    });
+  }
+
+  STYLE_TREE.forEach((node, idx) => {
+    const wrap = document.createElement("div");
+    wrap.className = "tree-group";
+
+    const gbtn = document.createElement("button");
+    gbtn.type = "button";
+    gbtn.className = "tree-group-btn";
+    gbtn.textContent = "▼ " + node.group;
+
+    const children = document.createElement("div");
+    children.className = "tree-children";
+
+    let opened = (idx === 0); // 初期は先頭だけ開く
+
+    gbtn.addEventListener("click", () => {
+      // クリックしたグループだけ開く（他は閉じる）
+      closeAllExcept(idx);
+    });
+
+    (node.types || []).forEach(typeName => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tree-leaf-btn";
+      b.setAttribute("data-group", node.group);
+      b.setAttribute("data-type", typeName);
+      b.innerHTML = `<span class="indent"></span>${typeName}`;
+      b.addEventListener("click", () => selectStyle(node.group, typeName));
+      children.appendChild(b);
+    });
+
+    wrap.appendChild(gbtn);
+    wrap.appendChild(children);
+    root.appendChild(wrap);
+
+    groupUIs.push({ gbtn, children, group: node.group, opened });
+
+    // 初期開閉反映
+    children.style.display = opened ? "flex" : "none";
+    gbtn.textContent = (opened ? "▼ " : "▶ ") + node.group;
+  });
+
+  // 念のため：先頭のみ開く状態に統一
+  closeAllExcept(0);
+}
+
+function updateStyleTreeSelection() {
+  const root = document.getElementById("styleTree");
+  if (!root) return;
+  root.querySelectorAll(".tree-leaf-btn").forEach(btn => {
+    const g = btn.getAttribute("data-group");
+    const t = btn.getAttribute("data-type");
+    btn.classList.toggle("tree-selected", g === currentStyle.group && t === currentStyle.type);
+  });
+}
+
+/* =========================================================
+   画像存在チェック（ローカル）
+========================================================= */
+function checkFileByImage(encodedPath) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = encodedPath + "?t=" + new Date().getTime();
+  });
+}
+
+/* =========================================================
+   カテゴリ/花/色 プルダウン
+========================================================= */
+function populateCategorySelect() {
+  categorySelect.innerHTML = "";
+  FLOWER_CATEGORIES.forEach((c, idx) => {
+    const opt = document.createElement("option");
+    opt.value = String(idx);
+    opt.textContent = c.category;
+    categorySelect.appendChild(opt);
+  });
+}
+
+function populateFlowerSelect(categoryIndex) {
+  flowerSelect.innerHTML = "";
+  const cat = FLOWER_CATEGORIES[categoryIndex];
+  if (!cat) return;
+  cat.flowers.forEach(f => {
+    const opt = document.createElement("option");
+    opt.value = f.folder;
+    opt.textContent = f.label;
+    flowerSelect.appendChild(opt);
+  });
+}
+
+function populateColorSelect(folderName) {
+  colorSelect.innerHTML = "";
+  const colors = getAvailableColors(folderName);
+  colors.forEach((c, idx) => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    colorSelect.appendChild(opt);
+    if (idx === 0) colorSelect.value = c;
+  });
+}
+
+categorySelect.addEventListener("change", async (e) => {
+  const idx = parseInt(e.target.value, 10) || 0;
+  populateFlowerSelect(idx);
+
+  const folder = flowerSelect.value;
+  populateColorSelect(folder);
+
+  if (folder && colorSelect.value) {
+    await loadFlowerImages(folder, colorSelect.value);
+  }
+});
+
+flowerSelect.addEventListener("change", async (e) => {
+  const folder = e.target.value;
+  populateColorSelect(folder);
+  if (folder && colorSelect.value) {
+    await loadFlowerImages(folder, colorSelect.value);
+  }
+});
+
+colorSelect.addEventListener("change", async (e) => {
+  const folder = flowerSelect.value;
+  const color = e.target.value;
+  if (folder && color) {
+    await loadFlowerImages(folder, color);
+  }
+});
+
+/* =========================================================
+   花一覧読み込み（新仕様）
+========================================================= */
+async function loadFlowerImages(folderName, colorName) {
+  flowerList.innerHTML = "";
+
+  const folderEnc = encodeURIComponent(folderName);
+  const colorEnc  = encodeURIComponent(colorName);
+  const size = getListSizeFixed();
+
+  let index = 1;
+  while (true) {
+    const encodedPath = `flowers/${folderEnc}/${index}_${colorEnc}.png`;
+    const exists = await checkFileByImage(encodedPath);
+    if (!exists) break;
+
+    const img = document.createElement("img");
+    img.src = encodedPath;
+    img.setAttribute("data-src", encodedPath);
+    img.className = "flower-item";
+    img.style.width = size + "px";
+    img.style.height = size + "px";
+    img.draggable = true;
+
+    img.addEventListener("click", () => setPenEnabled(false));
+
+    img.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("src", encodedPath);
+      // ドラッグ中のマウスカーソルに追加予定の画像を表示
+try {
+      const r = img.getBoundingClientRect();
+      e.dataTransfer.setDragImage(img, Math.floor(r.width / 2), Math.floor(r.height / 2));
+    } catch {}
+
+    });
+
+    flowerList.appendChild(img);
+    index++;
+  }
+}
+
+/* =========================================================
+   起動
+========================================================= */
+window.addEventListener("load", async () => {
+  if (!Array.isArray(FLOWER_CATEGORIES) || FLOWER_CATEGORIES.length === 0) {
+    alert("FLOWER_CATEGORIES が空です。HTML上部の設定を確認してください。");
+    return;
+  }
+
+  populateCategorySelect();
+  categorySelect.value = "0";
+  populateFlowerSelect(0);
+
+  const firstFolder = flowerSelect.value;
+  if (!firstFolder) {
+    alert("花の設定がありません。FLOWER_CATEGORIES を確認してください。");
+    return;
+  }
+
+  populateColorSelect(firstFolder);
+  const firstColor = colorSelect.value;
+
+  await loadFlowerImages(firstFolder, firstColor);
+
+  setupInkCanvasSize();
+  initColorUI();
+
+  historyStack = [];
+  redoStack = [];
+  inkDirty = true;
+  pushHistory();
+  updateUndoRedoButtons();
+
+  setMode("pen");
+  setPenEnabled(true);
+  renderStyleTree();
+  // 初期背景（最初の要素）
+  const firstGroup = STYLE_TREE[0]?.group;
+  const firstType = STYLE_TREE[0]?.types?.[0];
+  if (firstGroup && firstType) selectStyle(firstGroup, firstType);
+
+  // 右パネル色UI初期化（必ず表示される）
+  populatePlacedColorSelect(firstFolder);
+  syncPlacedColorUI();
+
+  rememberCanvasSize();
+  // 初回描画直後はサイズが確定していないことがあるため、安定するまで再レイアウト
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      scheduleRelayoutUntilStable(2200, 120);
+    });
+  });
+});
+/* =========================================================
+   すべてクリア（花＋線）
+========================================================= */
+function clearAll() {
+  if (!confirm("花と線をすべてクリアします。よろしいですか？")) return;
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => el.remove());
+  clearSelection();
+  clearInk(false);
+  inkDirty = true;
+  pushHistory();
+}
+clearAllBtn.addEventListener("click", clearAll);
+
+/* =========================================================
+   ドロップ（キャンバスへ追加）
+========================================================= */
+canvas.addEventListener("dragover", e => e.preventDefault());
+
+canvas.addEventListener("drop", e => {
+  e.preventDefault();
+  const src = e.dataTransfer.getData("src");
+  if (!src) return;
+
+  setPenEnabled(false);
+
+  const img = document.createElement("img");
+  img.src = src;
+  img.setAttribute("data-src", src);
+  img.className = "flower-on-canvas";
+  img.draggable = false;
+
+  const size = getCanvasSizeFixed();
+  img.style.width = size + "px";
+  img.style.height = size + "px";
+  img.dataset.rotate = "0";
+  img.dataset.scale = "1";
+  img.style.transform = `rotate(0deg) scale(1)`;
+  img.style.zIndex = String(++zCounter);
+
+  const rect = canvas.getBoundingClientRect();
+  img.style.left = (e.clientX - rect.left - size / 2) + "px";
+  img.style.top  = (e.clientY - rect.top  - size / 2) + "px";
+
+  // 相対座標を保持（レイアウト変更でも背景と見た目を揃える）
+  setVirtualFromElement(img);
+
+  bindSelectHandlers(img);
+  canvas.appendChild(img);
+  makeDraggable(img);
+
+  clearSelection();
+  toggleSelect(img);
+  pushHistory();
+});
+
+/* =========================================================
+   選択
+========================================================= */
+function clearSelection() {
+  selectedFlowers.forEach(el => el.classList.remove("flower-selected"));
+  selectedFlowers.clear();
+  syncPlacedColorUI();
+}
+
+function toggleSelect(el) {
+  if (selectedFlowers.has(el)) {
+    el.classList.remove("flower-selected");
+    selectedFlowers.delete(el);
+  } else {
+    el.classList.add("flower-selected");
+    selectedFlowers.add(el);
+  }
+  syncPlacedColorUI();
+}
+
+function bindSelectHandlers(img) {
+  // 選択処理は mousedown（ドラッグ開始）側で行う。
+  // Shift+クリック時に click と mousedown の両方でトグルすると二重反転してしまい、
+  // 複数選択が効かなくなるため、click では選択変更しない（伝播停止のみ）。
+  img.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+  });
+}
+
+let suppressNextCanvasClick = false;
+
+canvas.addEventListener("click", (e) => {
+  // 矩形選択後に発生する click で選択が解除されないよう抑止
+  if (suppressNextCanvasClick) {
+    suppressNextCanvasClick = false;
+    return;
+  }
+  // 背景画像（bgLayer）クリックも「空白クリック」と同等に扱う
+  if (e.target !== canvas && e.target !== bgLayer) return;
+  if (isInkActive()) return;
+  clearSelection();
+});
+
+
+/* =========================================================
+   矩形範囲選択（ドラッグで複数選択）
+   - キャンバス空白（または背景）をドラッグすると、範囲に入った花をすべて選択
+   - Shiftを押しながらであれば、既存選択に追加（加算選択）
+   - ペンON中は無効
+========================================================= */
+const selectionBox = document.getElementById("selectionBox");
+let marqueeActive = false;
+let marqueeStart = { x: 0, y: 0 };
+let marqueeAdd = false;
+
+function addToSelection(el) {
+  if (selectedFlowers.has(el)) return;
+  el.classList.add("flower-selected");
+  selectedFlowers.add(el);
+}
+
+function getCanvasPoint(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  return { x: clientX - r.left, y: clientY - r.top };
+}
+
+function setSelectionBox(x1, y1, x2, y2) {
+  selectionBox.style.left = x1 + "px";
+  selectionBox.style.top = y1 + "px";
+  selectionBox.style.width = (x2 - x1) + "px";
+  selectionBox.style.height = (y2 - y1) + "px";
+}
+
+function marqueeMove(ev) {
+  if (!marqueeActive) return;
+
+  const p = getCanvasPoint(ev.clientX, ev.clientY);
+  const x1 = Math.min(marqueeStart.x, p.x);
+  const y1 = Math.min(marqueeStart.y, p.y);
+  const x2 = Math.max(marqueeStart.x, p.x);
+  const y2 = Math.max(marqueeStart.y, p.y);
+
+  setSelectionBox(x1, y1, x2, y2);
+}
+
+function marqueeEnd(ev) {
+  document.removeEventListener("mousemove", marqueeMove);
+  if (!marqueeActive) return;
+
+  marqueeActive = false;
+  selectionBox.style.display = "none";
+
+  const p = getCanvasPoint(ev.clientX, ev.clientY);
+  const x1 = Math.min(marqueeStart.x, p.x);
+  const y1 = Math.min(marqueeStart.y, p.y);
+  const x2 = Math.max(marqueeStart.x, p.x);
+  const y2 = Math.max(marqueeStart.y, p.y);
+
+  const w = x2 - x1;
+  const h = y2 - y1;
+
+  // ほぼクリックだった場合は、通常の click 処理に任せる（抑止しない）
+  if (w < 3 && h < 3) {
+    syncPlacedColorUI();
+    return;
+  }
+
+  // 矩形選択後の click を抑止（解除されるのを防ぐ）
+  suppressNextCanvasClick = true;
+
+  const cRect = canvas.getBoundingClientRect();
+  const flowers = canvas.querySelectorAll(".flower-on-canvas");
+  flowers.forEach(el => {
+    const r = el.getBoundingClientRect();
+    const ex1 = r.left - cRect.left;
+    const ey1 = r.top - cRect.top;
+    const ex2 = r.right - cRect.left;
+    const ey2 = r.bottom - cRect.top;
+
+    const hit = (ex1 < x2 && ex2 > x1 && ey1 < y2 && ey2 > y1);
+    if (hit) addToSelection(el);
+  });
+
+  syncPlacedColorUI();
+}
+
+canvas.addEventListener("mousedown", (e) => {
+  if (isInkActive()) return;
+  if (e.button !== 0) return;
+
+  // 空白（canvas）または背景（bgLayer）を押したときのみ開始
+  if (e.target !== canvas && e.target !== bgLayer) return;
+
+  marqueeActive = true;
+  marqueeAdd = !!e.shiftKey;
+
+  if (!marqueeAdd) clearSelection();
+
+  marqueeStart = getCanvasPoint(e.clientX, e.clientY);
+
+  selectionBox.style.display = "block";
+  setSelectionBox(marqueeStart.x, marqueeStart.y, marqueeStart.x, marqueeStart.y);
+
+  document.addEventListener("mousemove", marqueeMove);
+  document.addEventListener("mouseup", marqueeEnd, { once: true });
+});
+
+/* =========================================================
+   移動（Ctrl+ドラッグで複製）
+========================================================= */
+function makeDraggable(el) {
+    let dragging = false;
+    let didMove = false;
+
+    // グループ移動用
+    let startClientX = 0;
+    let startClientY = 0;
+    let startPositions = new Map(); // el -> {x,y}
+
+    el.addEventListener("mousedown", e => {
+        e.stopPropagation();
+        if (isInkActive()) return; // ★ペンON中は花を動かせない
+
+        // 選択更新
+        if (e.shiftKey) {
+            // Shift: トグル
+            toggleSelect(el);
+        } else if (e.ctrlKey || e.metaKey) {
+            // Ctrl: クリックで複数選択に追加/解除したいので、mousedown では選択を崩さない
+            // （ドラッグの場合は後段の Ctrl+ドラッグ複製ロジックで対応）
+            // ※未選択の花をCtrlドラッグした場合、複製が発動する直前に自動で選択します
+        } else {
+            // Shift/Ctrlなし：
+            // すでに複数選択中で、その中の1つを掴んだ場合は選択を維持（グループ移動しやすくする）
+            // 未選択の花を掴んだ場合は、その花だけを単一選択にする
+            if (!selectedFlowers.has(el)) {
+                clearSelection();
+                toggleSelect(el);
+            }
+        }
+        syncScaleSlider();
+// Ctrl+ドラッグ：一定以上動いたら複製してから移動（Ctrl+クリックは複数選択に使えるようにする）
+        let pendingCtrlCopy = !!e.ctrlKey;
+        let ctrlCopyDone = false;
+
+        dragging = true;
+        didMove = false;
+
+        startClientX = e.clientX;
+        startClientY = e.clientY;
+
+        // 選択中すべての開始位置を記録
+        startPositions = new Map();
+        selectedFlowers.forEach(f => {
+            startPositions.set(f, {
+                x: parseFloat(f.style.left || "0"),
+                y: parseFloat(f.style.top  || "0")
+            });
+        });
+
+        const moveDrag = (ev) => {
+            if (!dragging) return;
+            didMove = true;
+
+            // Ctrlコピー：しきい値を超えたら1回だけ発動（誤クリックで増殖しない）
+            if (pendingCtrlCopy && !ctrlCopyDone) {
+                const mdx = ev.clientX - startClientX;
+                const mdy = ev.clientY - startClientY;
+                if ((mdx*mdx + mdy*mdy) >= 16) { // 4px 以上
+                    // Ctrlドラッグ開始時点で未選択なら、この花だけを対象にする
+                    if (selectedFlowers.size === 0 && !selectedFlowers.has(el)) {
+                        clearSelection();
+                        toggleSelect(el);
+                        syncScaleSlider();
+                    }
+                    const clones = duplicateSelectionInternal({ offsetX: 12, offsetY: 12 });
+                    if (clones.length) {
+                        clearSelection();
+                        clones.forEach(c => toggleSelect(c));
+                        syncScaleSlider();
+                    }
+                    // 複製後の選択（クローン）でドラッグを続行するため、基準点を現在にリセット
+                    startClientX = ev.clientX;
+                    startClientY = ev.clientY;
+
+                    startPositions = new Map();
+                    selectedFlowers.forEach(f => {
+                        startPositions.set(f, {
+                            x: parseFloat(f.style.left || "0"),
+                            y: parseFloat(f.style.top  || "0")
+                        });
+                    });
+
+                    ctrlCopyDone = true;
+                    pendingCtrlCopy = false;
+                }
+            }
+
+            const dx = ev.clientX - startClientX;
+            const dy = ev.clientY - startClientY;
+
+            selectedFlowers.forEach(f => {
+                const p = startPositions.get(f);
+                if (!p) return;
+                f.style.left = (p.x + dx) + "px";
+                f.style.top  = (p.y + dy) + "px";
+            });
+        };
+
+        const stopDrag = () => {
+            dragging = false;
+            document.removeEventListener("mousemove", moveDrag);
+
+            if (didMove) {
+                // 移動後の相対座標を更新
+                selectedFlowers.forEach(f => setRelFromElement(f));
+                pushHistory();
+            }
+        };
+
+        document.addEventListener("mousemove", moveDrag);
+        document.addEventListener("mouseup", stopDrag, { once: true });
+    });
+}
+
+/* =========================================================
+   回転
+========================================================= */
+let rotateRAF = null;
+let rotateDir = 0;
+let lastRotateTs = 0;
+
+function stepRotate(deltaDeg) {
+  if (selectedFlowers.size === 0) return;
+  selectedFlowers.forEach(el => {
+    let current = parseFloat(el.dataset.rotate || "0");
+    current += deltaDeg;
+    el.dataset.rotate = String(current);
+    const s = el.dataset.scale || "1";
+    el.style.transform = `rotate(${current}deg) scale(${s})`;
+  });
+}
+function rotateLoop(ts) {
+  if (!rotateDir) return;
+  if (!lastRotateTs) lastRotateTs = ts;
+  const dt = (ts - lastRotateTs) / 1000;
+  lastRotateTs = ts;
+
+  const speed = 180;
+  stepRotate(rotateDir * speed * dt);
+
+  rotateRAF = requestAnimationFrame(rotateLoop);
+}
+function startRotate(dir) {
+  if (selectedFlowers.size === 0) return;
+  rotateDir = dir;
+  lastRotateTs = 0;
+  if (!rotateRAF) rotateRAF = requestAnimationFrame(rotateLoop);
+}
+function stopRotate() {
+  rotateDir = 0;
+  if (rotateRAF) {
+    cancelAnimationFrame(rotateRAF);
+    rotateRAF = null;
+  }
+  pushHistory();
+}
+function attachHoldRotate(btn, dir) {
+  btn.addEventListener("mousedown", () => startRotate(dir));
+  btn.addEventListener("mouseup", () => stopRotate());
+  btn.addEventListener("mouseleave", () => stopRotate());
+
+  btn.addEventListener("touchstart", (e) => { e.preventDefault(); startRotate(dir); }, { passive:false });
+  btn.addEventListener("touchend", () => stopRotate());
+  btn.addEventListener("touchcancel", () => stopRotate());
+
+  btn.addEventListener("click", () => {
+    if (selectedFlowers.size === 0) return;
+    stepRotate(dir * 5);
+    pushHistory();
+  });
+}
+attachHoldRotate(rotateLeftBtn, -1);
+attachHoldRotate(rotateRightBtn, +1);
+
+/* =========================================================
+   削除/重なり順
+========================================================= */
+function deleteSelected() {
+  if (selectedFlowers.size === 0) return;
+  selectedFlowers.forEach(el => el.remove());
+  selectedFlowers.clear();
+  syncPlacedColorUI();
+  pushHistory();
+}
+
+function duplicateSelectionInternal({ offsetX=10, offsetY=10 } = {}) {
+  if (selectedFlowers.size === 0) return [];
+  const originals = [...selectedFlowers];
+
+  const clones = originals.map(el => {
+    const data = {
+      src: el.getAttribute("data-src") || el.src,
+      x: (parseFloat(el.style.left || "0") + offsetX) + "px",
+      y: (parseFloat(el.style.top  || "0") + offsetY) + "px",
+      w: el.style.width,
+      h: el.style.height,
+      r: el.dataset.rotate || "0",
+      s: el.dataset.scale || "1",
+      z: String(++zCounter)
+    };
+    const img = createCanvasFlowerFromData(data);
+    canvas.appendChild(img);
+    makeDraggable(img);
+    return img;
+  });
+
+  return clones;
+}
+
+function bringForward() {
+  if (selectedFlowers.size === 0) return;
+  selectedFlowers.forEach(el => {
+    const z = parseInt(el.style.zIndex || "1", 10);
+    el.style.zIndex = String(z + 1);
+    zCounter = Math.max(zCounter, z + 1);
+  });
+  pushHistory();
+}
+function sendBackward() {
+  if (selectedFlowers.size === 0) return;
+  selectedFlowers.forEach(el => {
+    const z = parseInt(el.style.zIndex || "1", 10);
+    el.style.zIndex = String(Math.max(1, z - 1));
+  });
+  pushHistory();
+}
+function bringToFront() {
+  if (selectedFlowers.size === 0) return;
+  selectedFlowers.forEach(el => {
+    el.style.zIndex = String(++zCounter);
+  });
+  pushHistory();
+}
+function sendToBack() {
+  if (selectedFlowers.size === 0) return;
+  selectedFlowers.forEach(el => {
+    el.style.zIndex = "1";
+  });
+  pushHistory();
+}
+
+/* =========================================================
+   保存/読み込み
+========================================================= */
+function saveLayout() {
+  const items = [];
+    // 保存前に相対座標を更新（念のため）
+    ensureRelForAllFlowers();
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => {
+    items.push({
+            src: el.getAttribute("data-src") || el.src,
+            x: el.style.left,
+            y: el.style.top,
+            w: el.style.width,
+            h: el.style.height,
+            rx: parseFloat(el.dataset.rx || "0"),
+            ry: parseFloat(el.dataset.ry || "0"),
+            rw: parseFloat(el.dataset.rw || "0"),
+            rh: parseFloat(el.dataset.rh || "0"),
+            r: el.dataset.rotate || "0",
+            s: el.dataset.scale || "1",
+            z: el.style.zIndex || "1"
+        });
+  });
+
+  const payload = { version: 4, style: { ...currentStyle }, items, ink: captureInkDataURL() };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "flower_layout.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+loadLayoutBtn.addEventListener("click", () => layoutFileInput.click());
+
+function getLayoutBoundingRectSimple() {
+  const els = [...canvas.querySelectorAll(".flower-on-canvas")];
+  if (els.length === 0) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const el of els) {
+    const left = parseFloat(el.style.left || "0");
+    const top  = parseFloat(el.style.top  || "0");
+    const w = parseFloat(el.style.width || "0");
+    const h = parseFloat(el.style.height|| "0");
+    minX = Math.min(minX, left);
+    minY = Math.min(minY, top);
+    maxX = Math.max(maxX, left + w);
+    maxY = Math.max(maxY, top + h);
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+function translateLayout(dx, dy) {
+  canvas.querySelectorAll(".flower-on-canvas").forEach(el => {
+    const x = parseFloat(el.style.left || "0");
+    const y = parseFloat(el.style.top  || "0");
+    el.style.left = (x + dx) + "px";
+    el.style.top  = (y + dy) + "px";
+  });
+}
+
+function autoFitLayoutToCanvas(padding = 12) {
+  const rect = getLayoutBoundingRectSimple();
+  if (!rect) return;
+
+  const cw = canvas.clientWidth;
+  const ch = canvas.clientHeight;
+
+  let dx = 0, dy = 0;
+
+  if (rect.minX < padding) dx += (padding - rect.minX);
+  if (rect.maxX > cw - padding) dx += ((cw - padding) - rect.maxX);
+  if (rect.minY < padding) dy += (padding - rect.minY);
+  if (rect.maxY > ch - padding) dy += ((ch - padding) - rect.maxY);
+
+  if (dx !== 0 || dy !== 0) translateLayout(dx, dy);
+}
+
+layoutFileInput.addEventListener("change", async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+
+    let items = [];
+        let ink = null;
+        let style = null;
+
+    if (Array.isArray(parsed)) {
+      items = parsed;
+    } else {
+      items = Array.isArray(parsed.items) ? parsed.items : [];
+      ink = parsed.ink || null;
+            style = parsed.style || null;
+    }
+
+    canvas.querySelectorAll(".flower-on-canvas").forEach(el => el.remove());
+    clearSelection();
+
+    let maxZ = 1;
+
+    for (const it of items) {
+      if (!it || !it.src) continue;
+      const img = createCanvasFlowerFromData({
+                src: it.src,
+                x: it.x ?? "0px",
+                y: it.y ?? "0px",
+                w: it.w ?? "96px",
+                h: it.h ?? "96px",
+                rx: (it.rx != null ? Number(it.rx) : null),
+                ry: (it.ry != null ? Number(it.ry) : null),
+                rw: (it.rw != null ? Number(it.rw) : null),
+                rh: (it.rh != null ? Number(it.rh) : null),
+                r: String(it.r ?? "0"),
+                s: String(it.s ?? "1"),
+                z: String(it.z ?? "1")
+            });
+      canvas.appendChild(img);
+      makeDraggable(img);
+
+      const z = parseInt(img.style.zIndex || "1", 10);
+      maxZ = Math.max(maxZ, isNaN(z) ? 1 : z);
+    }
+
+    zCounter = Math.max(zCounter, maxZ);
+    autoFitLayoutToCanvas(12);
+        // 補正後の相対座標を再計算
+        ensureRelForAllFlowers();
+
+    if (ink) {
+      applyInkDataURL(ink);
+      inkDirty = false;
+    } else {
+      clearInk(false);
+    }
+
+    inkDirty = true;
+    pushHistory();
+
+  } catch {
+    alert("読み込み失敗：JSON を解析できませんでした");
+  } finally {
+    e.target.value = "";
+  }
+});
+
+function createCanvasFlowerFromData(it) {
+  const img = document.createElement("img");
+  img.src = it.src;
+  img.setAttribute("data-src", it.src);
+  img.className = "flower-on-canvas";
+  img.draggable = false;
+
+  img.style.left = it.x;
+  img.style.top  = it.y;
+  img.style.width  = it.w;
+  img.style.height = it.h;
+
+    // 相対座標が保存されている場合はそれを優先
+    if (it.rx != null && it.ry != null && it.rw != null && it.rh != null) {
+      img.dataset.rx = String(it.rx);
+      img.dataset.ry = String(it.ry);
+      img.dataset.rw = String(it.rw);
+      img.dataset.rh = String(it.rh);
+      applyElementFromRel(img);
+    }
+
+  img.dataset.rotate = String(it.r ?? "0");
+  img.dataset.scale  = String(it.s ?? "1");
+  img.style.transform = `rotate(${img.dataset.rotate}deg) scale(${img.dataset.scale})`;
+
+  img.style.zIndex = String(it.z ?? "1");
+
+  bindSelectHandlers(img);
+  // 相対座標を保持（読み込み/複製後のリレイアウト対応）
+  setVirtualFromElement(img);
+  return img;
+}
+
+/* =========================================================
+   配置済みの花：色変更
+========================================================= */
+function parseFlowerDataSrc(dataSrc) {
+  if (!dataSrc) return null;
+
+  const clean = String(dataSrc).split("?")[0];
+  // flowers/<folderEnc>/<index>_<colorEnc>.png
+  const m = clean.match(/^flowers\/([^\/]+)\/(\d+)_([^\/]+)\.png$/);
+  if (!m) return null;
+
+  return {
+    folderEnc: m[1],
+    indexStr: m[2],
+    colorEnc: m[3],
+    folder: decodeURIComponent(m[1]),
+    color: decodeURIComponent(m[3]),
+  };
+}
+
+function buildFlowerPath(folderEnc, indexStr, colorName) {
+  const colorEnc = encodeURIComponent(colorName);
+  return `flowers/${folderEnc}/${indexStr}_${colorEnc}.png`;
+}
+
+function populatePlacedColorSelectByColors(colors) {
+  placedColorSelect.innerHTML = "";
+
+  const opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.textContent = "（色を選択）";
+  placedColorSelect.appendChild(opt0);
+
+  (colors || []).forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    placedColorSelect.appendChild(opt);
+  });
+}
+
+function getAvailableColorsForSelected() {
+  const sels = [...selectedFlowers];
+  if (sels.length === 0) return { colors: [], folders: [], parsable: true };
+
+  let parsable = true;
+  const folders = [];
+  const union = new Set();
+
+  for (const el of sels) {
+    const info = parseFlowerDataSrc(el.getAttribute("data-src") || el.src);
+    if (!info) { parsable = false; continue; }
+    folders.push(info.folder);
+    const cs = getAvailableColors(info.folder) || [];
+    cs.forEach(c => union.add(c));
+  }
+
+  return { colors: [...union], folders, parsable };
+}
+
+function syncPlacedColorUI() {
+  const sels = [...selectedFlowers];
+
+  if (sels.length === 0) {
+    placedColorSelect.disabled = true;
+    suppressPlacedColorChange = true;
+    suppressPlacedColorChange = true;
+    placedColorSelect.value = "";
+    suppressPlacedColorChange = false;
+    suppressPlacedColorChange = false;
+    populatePlacedColorSelectByColors([]);
+    return;
+  }
+
+  const { colors, parsable } = getAvailableColorsForSelected();
+  populatePlacedColorSelectByColors(colors);
+
+  if (!parsable) {
+    placedColorSelect.disabled = true;
+    suppressPlacedColorChange = true;
+    suppressPlacedColorChange = true;
+    placedColorSelect.value = "";
+    suppressPlacedColorChange = false;
+    suppressPlacedColorChange = false;
+    return;
+  }
+
+  // 選択中の花が持つ「現在の色」が単一なら表示、複数なら空欄
+  const currentColors = new Set();
+  for (const el of sels) {
+    const info = parseFlowerDataSrc(el.getAttribute("data-src") || el.src);
+    if (!info) continue;
+    currentColors.add(info.color);
+  }
+
+  placedColorSelect.disabled = (colors.length === 0);
+
+  if (currentColors.size === 1 && colors.includes([...currentColors][0])) {
+    suppressPlacedColorChange = true;
+    placedColorSelect.value = [...currentColors][0];
+    suppressPlacedColorChange = false;
+  } else {
+    suppressPlacedColorChange = true;
+    placedColorSelect.value = "";
+    suppressPlacedColorChange = false;
+  }
+}
+
+async function applyPlacedColor(newColor) {
+  if (!newColor) return;
+  if (selectedFlowers.size === 0) return;
+
+  const targets = [];
+  const pathsToCheck = new Set();
+
+  for (const el of selectedFlowers) {
+    const info = parseFlowerDataSrc(el.getAttribute("data-src") || el.src);
+    if (!info) continue;
+
+    // 花ごとに対応色が異なる前提：対応していない色はスキップ（警告なし）
+    const allowed = new Set(getAvailableColors(info.folder) || []);
+    if (!allowed.has(newColor)) continue;
+
+    const newPath = buildFlowerPath(info.folderEnc, info.indexStr, newColor);
+    targets.push({ el, newPath });
+    pathsToCheck.add(newPath);
+  }
+
+  // 適用対象が無い（全てスキップ）の場合は何もしない
+  if (targets.length === 0) return;
+
+  // 適用対象の画像だけ存在チェック（ローカル向け）
+  for (const p of pathsToCheck) {
+    const ok = await checkFileByImage(p);
+    if (!ok) {
+      // 画像が無い場合は、その色変更自体を無視（警告なし）
+      return;
+    }
+  }
+
+  for (const t of targets) {
+    t.el.src = t.newPath;
+    t.el.setAttribute("data-src", t.newPath);
+  }
+
+  pushHistory();
+  syncPlacedColorUI();
+}
+
+let suppressPlacedColorChange = false;
+
+placedColorSelect.addEventListener("change", async () => {
+  if (suppressPlacedColorChange) return;
+  const v = placedColorSelect.value;
+  if (!v) return;
+  // 即時反映
+  await applyPlacedColor(v);
+});
+
+
+/* =========================================================
+   ===== ペン機能 =====
+========================================================= */
+function setupInkCanvasSize() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+
+  drawLayer.width = Math.max(1, Math.floor(w * dpr));
+  drawLayer.height = Math.max(1, Math.floor(h * dpr));
+
+  const ctx = drawLayer.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+}
+
+let inkMode = "pen";
+let penEnabled = true;
+
+function isInkActive() { return penEnabled; }
+
+function setPenEnabled(on) {
+  penEnabled = on;
+  drawLayer.style.pointerEvents = on ? "auto" : "none";
+  penEnableBtn.textContent = on ? "ペンを解除（花操作）" : "ペンを有効化（描画）";
+}
+penEnableBtn.addEventListener("click", () => setPenEnabled(!penEnabled));
+
+function setMode(mode) {
+  inkMode = mode;
+  penBtn.classList.toggle("active", mode === "pen");
+  eraserBtn.classList.toggle("active", mode === "eraser");
+}
+penBtn.addEventListener("click", () => setMode("pen"));
+eraserBtn.addEventListener("click", () => setMode("eraser"));
+
+function clearInk(push=true) {
+  const ctx = getInkCtx();
+  if (!ctx) return;
+  ctx.save();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+  ctx.restore();
+  inkDirty = true;
+  if (push) pushHistory();
+}
+clearInkBtn.addEventListener("click", () => clearInk(true));
+
+function syncWidthUI() { wVal.textContent = String(wBar.value); }
+wBar.addEventListener("input", syncWidthUI);
+
+/* ===== ペン色選択 ===== */
+let currentColor = "#000000";
+let hue = parseInt(hueBar.value, 10) || 210;
+let sat = 1.0;
+let val = 1.0;
+
+const PRESET_COLORS = [
+  "#FFFFFF",
+  "#000000",
+  "#E53935", "#FB8C00", "#FDD835",
+  "#43A047", "#00ACC1", "#1E88E5",
+  "#8E24AA", "#D81B60", "#6D4C41"
+];
+
+function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+function hsvToRgb(h, s, v) {
+  h = ((h % 360) + 360) % 360;
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r=0,g=0,b=0;
+
+  if (h < 60)      { r=c; g=x; b=0; }
+  else if (h < 120){ r=x; g=c; b=0; }
+  else if (h < 180){ r=0; g=c; b=x; }
+  else if (h < 240){ r=0; g=x; b=c; }
+  else if (h < 300){ r=x; g=0; b=c; }
+  else             { r=c; g=0; b=x; }
+
+  return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
+}
+
+function rgbToHsv(r,g,b){
+  r/=255; g/=255; b/=255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  const d = max - min;
+
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = 60 * (((g - b) / d) % 6);
+    else if (max === g) h = 60 * (((b - r) / d) + 2);
+    else h = 60 * (((r - g) / d) + 4);
+  }
+  if (h < 0) h += 360;
+
+  const s = (max === 0) ? 0 : d / max;
+  const v = max;
+  return { h, s, v };
+}
+
+function hexToRgb(hex){
+  const m = String(hex).trim().match(/^#?([0-9a-f]{6})$/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return { r: (n>>16)&255, g: (n>>8)&255, b: n&255 };
+}
+
+function rgbToHex(r,g,b) {
+  const to = (n) => n.toString(16).padStart(2,"0");
+  return "#" + to(r) + to(g) + to(b);
+}
+
+function setCurrentColor(hex) {
+  currentColor = hex;
+  colorPreview.style.background = hex;
+}
+
+function getCurrentColorCss() { return currentColor; }
+
+function renderPresets() {
+  presetSwatches.innerHTML = "";
+  PRESET_COLORS.forEach(hex => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "swatchBtn";
+    b.style.background = hex;
+    b.title = hex;
+    b.addEventListener("click", () => {
+      applyColorToGradient(hex);
+      setMode("pen");
+    });
+    presetSwatches.appendChild(b);
+  });
+}
+
+function setupSVCanvasSize() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = svCanvas.getBoundingClientRect();
+  svCanvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  svCanvas.height = Math.max(1, Math.floor(rect.height * dpr));
+}
+
+function drawSV() {
+  const ctx = svCanvas.getContext("2d");
+  if (!ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  const w = svCanvas.width / dpr;
+  const h = svCanvas.height / dpr;
+  const {r,g,b} = hsvToRgb(hue, 1, 1);
+
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = `rgb(${r},${g},${b})`;
+  ctx.fillRect(0,0,w,h);
+
+  const g1 = ctx.createLinearGradient(0,0,w,0);
+  g1.addColorStop(0,"rgba(255,255,255,1)");
+  g1.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle = g1;
+  ctx.fillRect(0,0,w,h);
+
+  const g2 = ctx.createLinearGradient(0,0,0,h);
+  g2.addColorStop(0,"rgba(0,0,0,0)");
+  g2.addColorStop(1,"rgba(0,0,0,1)");
+  ctx.fillStyle = g2;
+  ctx.fillRect(0,0,w,h);
+
+  const x = sat * w;
+  const y = (1 - val) * h;
+  ctx.save();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(255,255,255,0.95)";
+  ctx.beginPath();
+  ctx.arc(x, y, 6, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(0,0,0,0.55)";
+  ctx.beginPath();
+  ctx.arc(x, y, 7, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function pickFromSVEvent(ev) {
+  const rect = svCanvas.getBoundingClientRect();
+  const x = (ev.clientX - rect.left) / rect.width;
+  const y = (ev.clientY - rect.top) / rect.height;
+
+  sat = clamp01(x);
+  val = clamp01(1 - y);
+
+  const rgb = hsvToRgb(hue, sat, val);
+  setCurrentColor(rgbToHex(rgb.r, rgb.g, rgb.b));
+  drawSV();
+}
+
+function applyColorToGradient(hex){
+  const rgb = hexToRgb(hex);
+  if (!rgb) return;
+
+  const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+  if (hsv.s > 0.001) hue = hsv.h;
+  sat = clamp01(hsv.s);
+  val = clamp01(hsv.v);
+
+  hueBar.value = String(Math.round(hue));
+  setCurrentColor(hex);
+
+  requestAnimationFrame(() => {
+    setupSVCanvasSize();
+    drawSV();
+  });
+}
+
+function initColorUI() {
+  renderPresets();
+
+  setupSVCanvasSize();
+  hue = parseInt(hueBar.value, 10) || 210;
+  sat = 1.0;
+  val = 1.0;
+  drawSV();
+
+  applyColorToGradient("#000000");
+
+  let dragging = false;
+
+  svCanvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    svCanvas.setPointerCapture(e.pointerId);
+    dragging = true;
+    pickFromSVEvent(e);
+    setMode("pen");
+  });
+
+  svCanvas.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    pickFromSVEvent(e);
+  });
+
+  function endDrag() { dragging = false; }
+  svCanvas.addEventListener("pointerup", endDrag);
+  svCanvas.addEventListener("pointercancel", endDrag);
+
+  hueBar.addEventListener("input", () => {
+    hue = parseInt(hueBar.value, 10) || 0;
+    drawSV();
+    const rgb = hsvToRgb(hue, sat, val);
+    setCurrentColor(rgbToHex(rgb.r, rgb.g, rgb.b));
+    setMode("pen");
+  });
+
+  syncWidthUI();
+}
+
+/* ===== 描画 ===== */
+let drawing = false;
+let lastX = 0, lastY = 0;
+
+function getPosFromEvent(ev) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+}
+
+function beginStroke(ev) {
+  if (!penEnabled) return;
+  drawing = true;
+  const p = getPosFromEvent(ev);
+  lastX = p.x; lastY = p.y;
+}
+
+function moveStroke(ev) {
+  if (!drawing) return;
+  const ctx = getInkCtx();
+  if (!ctx) return;
+
+  const p = getPosFromEvent(ev);
+  const width = Math.max(1, parseInt(wBar.value, 10) || 6);
+
+  ctx.save();
+  ctx.lineWidth = width;
+
+  if (inkMode === "eraser") {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.strokeStyle = "rgba(0,0,0,1)";
+  } else {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = getCurrentColorCss();
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  ctx.restore();
+
+  lastX = p.x; lastY = p.y;
+  inkDirty = true;
+}
+
+function endStroke() {
+  if (!drawing) return;
+  drawing = false;
+  pushHistory();
+}
+
+drawLayer.addEventListener("pointerdown", (ev) => {
+  if (!penEnabled) return;
+  ev.preventDefault();
+  drawLayer.setPointerCapture(ev.pointerId);
+  beginStroke(ev);
+});
+drawLayer.addEventListener("pointermove", (ev) => {
+  if (!penEnabled) return;
+  ev.preventDefault();
+  moveStroke(ev);
+});
+drawLayer.addEventListener("pointerup", (ev) => {
+  if (!penEnabled) return;
+  ev.preventDefault();
+  try { drawLayer.releasePointerCapture(ev.pointerId); } catch {}
+  endStroke();
+});
+drawLayer.addEventListener("pointercancel", () => endStroke());
+
+/* =========================================================
+   操作方法（ヘルプ表示）
+   ※モーダル（= 画面の上に重ねて表示する説明パネル）
+========================================================= */
+window.addEventListener("load", () => {
+  const helpBtn = document.getElementById("helpBtn");
+  const helpOverlay = document.getElementById("helpOverlay");
+  const helpCloseBtn = document.getElementById("helpCloseBtn");
+
+  if (!helpBtn || !helpOverlay || !helpCloseBtn) return;
+
+  function openHelp() {
+    helpOverlay.style.display = "flex";
+    helpOverlay.setAttribute("aria-hidden", "false");
+  }
+  function closeHelp() {
+    helpOverlay.style.display = "none";
+    helpOverlay.setAttribute("aria-hidden", "true");
+  }
+
+  helpBtn.addEventListener("click", () => openHelp());
+  helpCloseBtn.addEventListener("click", () => closeHelp());
+  helpOverlay.addEventListener("mousedown", (e) => {
+    if (e.target === helpOverlay) closeHelp();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && helpOverlay.style.display === "flex") closeHelp();
+  });
+});
+
+
+// リサイズ時：背景と花の比率・位置関係を維持したまま再レイアウト（間引き）
+// ※全画面切替（F11）などはサイズが段階的に変わることがあるため、安定するまで追従
+let resizeRAF = null;
+
+window.addEventListener("resize", () => {
+  if (resizeRAF) cancelAnimationFrame(resizeRAF);
+  resizeRAF = requestAnimationFrame(() => {
+    scheduleRelayoutUntilStable(1800, 120);
+    resizeRAF = null;
+  });
+});
+
+
+
+// ブラウザUI（アドレスバー等）の出現で viewport が変わるケース対策
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    scheduleRelayoutUntilStable(1800, 120);
+  });
+}
+
+
+// ResizeObserver：canvas の実サイズ変化を確実に検知（全画面切替などの取りこぼし対策）
+let canvasRO = null;
+function attachCanvasResizeObserver() {
+  if (!("ResizeObserver" in window)) return;
+  if (canvasRO) return;
+  canvasRO = new ResizeObserver(() => {
+    scheduleRelayoutUntilStable(1800, 120);
+  });
+  try { canvasRO.observe(canvas); } catch {}
+}
+attachCanvasResizeObserver();
+</script>
+
+<!-- 操作方法モーダル -->
+<div id="helpOverlay" aria-hidden="true">
+  <div id="helpDialog" role="dialog" aria-modal="true">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <div style="font-weight:800; font-size:18px;">操作方法</div>
+      <button id="helpCloseBtn" type="button" style="height:36px; padding:6px 10px; cursor:pointer;">閉じる</button>
+    </div>
+
+    <div class="help-body">
+      <h4>基本</h4>
+      <ul>
+        <li>花の追加：下部の花画像をドラッグ＆ドロップ</li>
+        <li>選択：クリックで単一選択</li>
+        <li>複数選択：<b>Shift + クリック</b>／<b>Shift + 範囲ドラッグ</b></li>
+        <li>範囲選択：キャンバスの空白（または背景）をドラッグ</li>
+      </ul>
+
+      <h4>コピー（複製）</h4>
+      <ul>
+        <li>コピー：<b>Ctrl</b>キーを押しながらコピーしたい花画像をドラッグ<br>※複数選択した状態でも可能</li>
+      </ul>
+
+      <h4>回転・重なり順</h4>
+      <ul>
+        <li>回転：ボタンを押し続けて花画像を回転</li>
+        <li>重なり順：前面/背面/最前面/最背面ボタンで花画像の重なりを変更</li>
+      </ul>
+
+      <h4>ペン</h4>
+      <ul>
+        <li>ペン：ペンON中は花操作不可（「ペンを解除（花操作）」で切り替え）</li>
+        <li>消しゴム：線の一部を消去／クリア：線を全消去</li>
+      </ul>
+
+      <h4>保存・読み込み</h4>
+      <ul>
+        <li>配置を保存：花の配置と線をJSON形式ファイルで保存</li>
+        <li>保存済み配置を読み込み：JSONを読み込んで復元</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
