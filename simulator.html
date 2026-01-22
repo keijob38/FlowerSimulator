@@ -976,7 +976,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v11";
+const APP_VERSION = "v12";
 
 
 /* =========================================================
@@ -3638,7 +3638,9 @@ attachCanvasResizeObserver();
 
 // ===== ピンUI =====
 if (addPinBtn) {
-  addPinBtn.addEventListener("click", () => {
+  
+addPinBtn.addEventListener("click", (ev) => {
+  ev.stopPropagation();
   if (pinAddMode) {
     cancelPinAddMode();
     return;
@@ -3651,7 +3653,13 @@ if (addPinBtn) {
   clearSelection();
   syncPlacedColorUI();
   updateSelectionDependentUI();
+
+  // ★スマホ：すぐキャンバスをタップして置けるように、パネルは閉じる（ただしピン追加モードは維持）
+  if (document.body.classList.contains("mobile")) {
+    try { closeMobilePanels(); } catch {}
+  }
 });
+
 }
 if (editPinBtn) {
   editPinBtn.addEventListener("click", () => {
