@@ -976,7 +976,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v10";
+const APP_VERSION = "v11";
 
 
 /* =========================================================
@@ -2142,7 +2142,8 @@ canvas.addEventListener("drop", e => {
 // モバイル：ピン配置は click が発火しない端末があるため pointerdown でも対応
 canvas.addEventListener("pointerdown", (ev) => {
   if (!document.body.classList.contains("mobile")) return;
-  if (ev.pointerType !== "touch") return;
+  // pointerType は端末/ブラウザで "touch" 以外(ペン/空)のことがあるので、mouse だけ除外
+  if (ev.pointerType && ev.pointerType === "mouse") return;
   if (!pinAddMode) return;
 
   // 花追加（タップ追加）より優先
@@ -2165,6 +2166,34 @@ canvas.addEventListener("pointerdown", (ev) => {
   pushHistory();
   closeMobilePanels();
 }, { passive: false });
+
+// モバイル：PointerEvent 非対応/不安定な環境向け touchstart フォールバック
+canvas.addEventListener("touchstart", (ev) => {
+  if (!document.body.classList.contains("mobile")) return;
+  if (!pinAddMode) return;
+  const t = ev.touches && ev.touches[0];
+  if (!t) return;
+
+  ev.preventDefault();
+  suppressNextCanvasClick = true;
+
+  if (isInkActive()) setPenEnabled(false);
+  cancelPinAddMode();
+
+  const { w: cw, h: ch } = getCanvasWH();
+  const rect = canvas.getBoundingClientRect();
+  const x = t.clientX - rect.left;
+  const y = t.clientY - rect.top;
+  const pvx = toVirtualX(x, cw);
+  const pvy = toVirtualY(y, ch);
+  const pin = createPinElement({ pvx, pvy, text: "" });
+  canvas.appendChild(pin);
+  selectPin(pin);
+  updatePinButtons();
+  pushHistory();
+  closeMobilePanels();
+}, { passive: false });
+
 
 canvas.addEventListener("pointerdown", (ev) => {
   if (!document.body.classList.contains("mobile")) return;
