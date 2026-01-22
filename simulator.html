@@ -759,6 +759,23 @@ body.mobile .flower-item.tap-add-armed {
 
 
 
+/* ===== モバイル：長押しメニュー抑制（花/ピン） ===== */
+body.mobile .flower-item{
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  touch-action: manipulation;
+}
+body.mobile .flower-on-canvas,
+body.mobile .pin{
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+}
+
 /* ===== モバイル：パネル内の文字・操作を大きめに ===== */
 body.mobile #left-panel,
 body.mobile #right-panel{ font-size: 18px; }
@@ -790,12 +807,36 @@ body.mobile #left-header{ display:none; }
 @media print{
   #versionBadge{ display:none !important; }
 }
+/* ===== モバイル：パネル内の文字・操作を大きめに ===== */
+body.mobile #left-panel,
+body.mobile #right-panel{ font-size: 26px; }
+body.mobile #left-panel h3,
+body.mobile #right-panel h3{ font-size: 30px; }
+body.mobile #left-panel h4,
+body.mobile #right-panel h4{ font-size: 26px; }
+
+/* パネル内ボタン/プルダウン */
+body.mobile #left-panel button,
+body.mobile #right-panel button,
+body.mobile #controls button,
+body.mobile #controls select{
+  font-size: 26px;
+  height: 76px;
+}
+
+/* スマホ上部バー（タイトル・タブボタン） */
+body.mobile #mobileTopBar .title{ font-size: 24px; }
+body.mobile #mobileTopBar button{
+  font-size: 24px;
+  height: 76px;
+}
+
 </style>
 </head>
 <body>
 <!-- モバイル用トップバー（スマホUI時のみ表示） -->
 <div aria-hidden="true" id="mobileTopBar">
-<button id="mobileOpenLeft" type="button">装花タイプ</button>
+<button id="mobileOpenLeft" type="button">背景・ペン</button>
 <div class="title">装花シミュレータ</div>
 <button id="mobileOpenRight" type="button">操作</button>
 </div>
@@ -820,7 +861,7 @@ body.mobile #left-header{ display:none; }
 <div id="leftHeaderTitle">パネルを閉じる</div>
 </div>
 <div class="panel-section" style="border-top:none; padding-top:0; margin-top:0;">
-<h3>装花タイプ</h3>
+<h3>装花タイプ(背景選択)</h3>
 <div id="styleTree"></div>
 </div>
 <div class="panel-section">
@@ -925,7 +966,7 @@ body.mobile #left-header{ display:none; }
 <button id="addPinBtn" type="button">ピンを追加</button>
 <button disabled="" id="editPinBtn" type="button">ピンを編集</button>
 <button disabled="" id="deletePinBtn" type="button">ピンを削除</button>
-<div class="small-note">※画面内にピンを追加して、テキストを挿入することができます<br/>
+<div class="small-note">※キャンバス内にピンを追加して、テキストを挿入することができます。<br/>
         ※「ピンを追加」を押した後、キャンバスをクリックすると配置できます。<br/>
         ※ピンはドラッグで移動できます。ダブルクリックで編集できます。
       </div>
@@ -938,7 +979,7 @@ body.mobile #left-header{ display:none; }
 </div></div>
 </div>
 <div id="flower-panel">
-<h3 id="flower-panel-title">花を追加</h3>
+<h3 id="flower-panel-title">花を追加(画像をキャンバスへドラッグ)</h3>
 <div id="controls">
 <label>カテゴリ</label>
 <select id="categorySelect"></select>
@@ -976,7 +1017,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v12";
+const APP_VERSION = "v14";
 
 
 /* =========================================================
@@ -4037,6 +4078,12 @@ function applyUIMode(mode) {
   const isMobile = (mode === "mobile");
   document.body.classList.toggle("mobile", isMobile);
 
+  // 花追加タイトル（PC/スマホで文言を切替）
+  const fpTitle = document.getElementById("flower-panel-title");
+  if (fpTitle) fpTitle.textContent = isMobile
+    ? "花を追加(画像を選択しキャンバス内をタップ)"
+    : "花を追加(画像をキャンバスへドラッグ)";
+
   const topBar = document.getElementById("mobileTopBar");
   if (topBar) topBar.setAttribute("aria-hidden", isMobile ? "false" : "true");
 
@@ -4048,6 +4095,15 @@ function applyUIMode(mode) {
   // レイアウト変化後に座標系を再計算（花/ペン/ピンの相対位置維持）
   try { relayoutCanvasesPreserveInk(); } catch {}
 }
+
+// モバイル：画像長押しのブラウザメニュー（新しいタブで開く等）を抑制
+document.addEventListener("contextmenu", (e) => {
+  if (!document.body.classList.contains("mobile")) return;
+  const t = e.target;
+  if (t && t.closest && (t.closest("#canvas") || t.closest("#flower-list"))) {
+    e.preventDefault();
+  }
+}, { capture: true });
 
 function closeMobilePanels() {
   document.getElementById("left-panel")?.classList.remove("open");
