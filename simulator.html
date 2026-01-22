@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <!--
 ============================================================
 【ユーザー設定（ここを編集）】※検索しやすいキーワード付き
@@ -27,7 +28,7 @@ flowers/ や background/ の「フォルダ一覧を自動探索してテーブ�
 -->
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
+<meta charset="utf-8"/>
 <title>結婚式 装花イメージシミュレーター</title>
 <style>
 :root{
@@ -757,6 +758,7 @@ body.mobile .flower-item.tap-add-armed {
 }
 
 
+
 /* ===== モバイル：パネル内の文字・操作を大きめに ===== */
 body.mobile #left-panel,
 body.mobile #right-panel{ font-size: 18px; }
@@ -771,6 +773,7 @@ body.mobile #controls select{
   font-size: 18px;
   height: 52px;
 }
+
 
 body.mobile #left-header{ display:none; }
 
@@ -789,197 +792,163 @@ body.mobile #left-header{ display:none; }
 }
 </style>
 </head>
-
 <body>
-
 <!-- モバイル用トップバー（スマホUI時のみ表示） -->
-<div id="mobileTopBar" aria-hidden="true">
-  <button id="mobileOpenLeft" type="button">装花タイプ</button>
-  <div class="title">装花シミュレータ</div>
-  <button id="mobileOpenRight" type="button">操作</button>
+<div aria-hidden="true" id="mobileTopBar">
+<button id="mobileOpenLeft" type="button">装花タイプ</button>
+<div class="title">装花シミュレータ</div>
+<button id="mobileOpenRight" type="button">操作</button>
 </div>
-<div id="mobileBackdrop" aria-hidden="true"></div>
-
+<div aria-hidden="true" id="mobileBackdrop"></div>
 <!-- 初回：スマホUI切替確認 -->
-<div id="mobileModePrompt" aria-hidden="true">
-  <div class="box">
-    <h3>スマホ用UIに切り替えますか？</h3>
-    <p>
-      スマホでは画面が小さいため、パネルをスライド表示するUIが使いやすい場合があります。<br>
+<div aria-hidden="true" id="mobileModePrompt">
+<div class="box">
+<h3>スマホ用UIに切り替えますか？</h3>
+<p>
+      スマホでは画面が小さいため、パネルをスライド表示するUIが使いやすい場合があります。<br/>
       ※この選択は端末に保存され、次回から自動で適用されます。
     </p>
-    <div class="row">
-      <button id="chooseDesktop" type="button">PC用（そのまま）</button>
-      <button id="chooseMobile" type="button">スマホ用に切替</button>
-    </div>
-  </div>
+<div class="row">
+<button id="chooseDesktop" type="button">PC用（そのまま）</button>
+<button id="chooseMobile" type="button">スマホ用に切替</button>
 </div>
-
-
+</div>
+</div>
 <div id="left-panel">
-  <div id="left-header">
-    <button id="leftToggleBtn" type="button" title="左パネルを折り畳み">◀</button>
-    <div id="leftHeaderTitle">パネルを閉じる</div>
-  </div>
-
-  <div class="panel-section" style="border-top:none; padding-top:0; margin-top:0;">
-    <h3>装花タイプ</h3>
-    <div id="styleTree"></div>
-  </div>
-
-  <div class="panel-section">
-    <h3>ペン</h3>
-
-    <button id="penEnableBtn" type="button">ペンを解除（花操作）</button>
-
-    <div class="pen-row" style="margin-top:6px;">
-      <button id="penBtn" type="button" class="active">ペン</button>
-      <button id="eraserBtn" type="button" title="消しゴム">消しゴム</button>
-      <button id="clearInkBtn" type="button" title="クリア">クリア</button>
-    </div>
-
-    
-
-      <div class="pen-row" style="margin-top:2px;">
-        <div style="font-size:12px; color:#555; width:42px;">太さ</div>
-        <input id="wBar" type="range" min="1" max="30" value="6" style="flex:1;">
-        <div id="wVal" style="font-size:12px; width:32px; text-align:right;">6</div>
-      </div>
-
-      <div id="colorPickerWrap">
-      <div>
-        <div class="paletteTitle">現在の色</div>
-        <div id="currentColorRow">
-          <div id="colorPreview" title="現在の色"></div>
-        </div>
-      </div>
-
-      <div>
-        <div class="paletteTitle">プリセット</div>
-        <div id="presetSwatches" class="swatchRow"></div>
-      </div>
-
-      <div>
-        <div class="paletteTitle">グラデーション</div>
-        <canvas id="svCanvas"></canvas>
-        <input id="hueBar" type="range" min="0" max="360" value="0">
-      </div>
-      </div>
-
-      <div class="small-note">
-        ペンモード中は花を動かせません。<br>
-        ※花を追加（下）の画像をクリックすると自動でペンモードを解除します。<br>
+<div id="left-header">
+<button id="leftToggleBtn" title="左パネルを折り畳み" type="button">◀</button>
+<div id="leftHeaderTitle">パネルを閉じる</div>
+</div>
+<div class="panel-section" style="border-top:none; padding-top:0; margin-top:0;">
+<h3>装花タイプ</h3>
+<div id="styleTree"></div>
+</div>
+<div class="panel-section">
+<h3>ペン</h3>
+<button id="penEnableBtn" type="button">ペンを解除（花操作）</button>
+<div class="pen-row" style="margin-top:6px;">
+<button class="active" id="penBtn" type="button">ペン</button>
+<button id="eraserBtn" title="消しゴム" type="button">消しゴム</button>
+<button id="clearInkBtn" title="クリア" type="button">クリア</button>
+</div>
+<div class="pen-row" style="margin-top:2px;">
+<div style="font-size:12px; color:#555; width:42px;">太さ</div>
+<input id="wBar" max="30" min="1" style="flex:1;" type="range" value="6"/>
+<div id="wVal" style="font-size:12px; width:32px; text-align:right;">6</div>
+</div>
+<div id="colorPickerWrap">
+<div>
+<div class="paletteTitle">現在の色</div>
+<div id="currentColorRow">
+<div id="colorPreview" title="現在の色"></div>
+</div>
+</div>
+<div>
+<div class="paletteTitle">プリセット</div>
+<div class="swatchRow" id="presetSwatches"></div>
+</div>
+<div>
+<div class="paletteTitle">グラデーション</div>
+<canvas id="svCanvas"></canvas>
+<input id="hueBar" max="360" min="0" type="range" value="0"/>
+</div>
+</div>
+<div class="small-note">
+        ペンモード中は花を動かせません。<br/>
+        ※花を追加（下）の画像をクリックすると自動でペンモードを解除します。<br/>
         ※色はプリセット/グラデーションから選べます。
       </div>
-    </div>
-  </div>
+</div>
 </div>
 
 <div id="v-resizer" title="左右にドラッグして左パネル幅を変更"></div>
-
 <div id="canvas">
-  <button id="gridToggleBtn" type="button">グリッド非表示（クリックで切り替え）</button>
-  <div id="versionBadge"></div>
-  <img id="bgLayer" alt="" />
-    <div id="selectionBox"></div>
-  <canvas id="gridLayer"></canvas>
-  <canvas id="drawLayer"></canvas>
-  <div id="penModeBadge">ペンモード（クリックで解除）</div>
-  <!-- モバイル：簡易操作ガイド（常時表示） -->
-  <div id="mobileHelpOverlay" aria-hidden="true">
-    <div class="mhelp-title">操作ヒント</div>
-    <div class="mhelp-line">・追加：下の花をタップ → 置きたい位置をタップ</div>
-    <div class="mhelp-line">・移動：花をドラッグ</div>
-    <div class="mhelp-line">・複数選択：花を長押しで追加/解除</div>
-    <div class="mhelp-line">・ピン：右の「ピンを追加」→ 置きたい位置をタップ</div>
-    <div class="mhelp-line">・ペン：左の「ペンモードを有効化」→ 指で描画</div>
-  </div>
-
+<button id="gridToggleBtn" type="button">グリッド非表示（クリックで切り替え）</button>
+<div id="versionBadge"></div>
+<img alt="" id="bgLayer"/>
+<div id="selectionBox"></div>
+<canvas id="gridLayer"></canvas>
+<canvas id="drawLayer"></canvas>
+<div id="penModeBadge">ペンモード（クリックで解除）</div>
+<!-- モバイル：簡易操作ガイド（常時表示） -->
+<div aria-hidden="true" id="mobileHelpOverlay">
+<div class="mhelp-title">操作ヒント</div>
+<div class="mhelp-line">・追加：下の花をタップ → 置きたい位置をタップ</div>
+<div class="mhelp-line">・移動：花をドラッグ</div>
+<div class="mhelp-line">・複数選択：花を長押しで追加/解除</div>
+<div class="mhelp-line">・ピン：右の「ピンを追加」→ 置きたい位置をタップ</div>
+<div class="mhelp-line">・ペン：左の「ペンモードを有効化」→ 指で描画</div>
 </div>
-
+</div>
 <div id="right-panel">
-  <div class="panel-section" style="border-top:none; padding-top:0; margin-top:0;">
-    <h3>操作</h3>
+<div class="panel-section" style="border-top:none; padding-top:0; margin-top:0;">
+<h3>操作</h3>
 
-    <div class="sub-section" style="margin-left:0;">
-      <h4>操作方法</h4>
-      <button id="helpBtn" type="button">操作方法</button>
-    </div>
 
-    <div class="sub-section" style="margin-left:0;">
-      <h4>履歴</h4>
-      <button id="undoBtn" type="button">戻る</button>
-      <button id="redoBtn" type="button">やり直す</button>
-    </div>
 
-    <div class="sub-section" style="margin-left:0;">
-      <h4>クリア</h4>
-      <button id="deleteSelectedBtn" onclick="deleteSelected()">選択中の花を削除</button>
+<!-- ★色変更：見えない問題を避けるため上部に配置 -->
 
-      <button id="clearAllBtn" type="button" disabled>すべてクリア</button>
-    </div>
 
-    <div class="sub-section" style="margin-left:0;">
-      <h4>色変更</h4>
-      <select id="placedColorSelect"></select>
-      <div style="font-size:12px; color:#666; margin-top:4px;">
-        ※複数の色の花を選択時、色は空欄になります。<br>
+
+
+
+
+<div class="sub-section" style="margin-left:0;">
+<h4>操作方法</h4>
+<button id="helpBtn" type="button">操作方法</button>
+</div><div class="sub-section" style="margin-left:0;">
+<h4>履歴</h4>
+<button id="undoBtn" type="button">戻る</button>
+<button id="redoBtn" type="button">やり直す</button>
+</div><div class="sub-section" style="margin-left:0;">
+<h4>クリア</h4>
+<></><button disabled="" id="clearAllBtn" type="button">すべてクリア</button>
+</div><div class="sub-section" style="margin-left:0;">
+<h4>色変更</h4>
+<select id="placedColorSelect"></select>
+<div style="font-size:12px; color:#666; margin-top:4px;">
+        ※複数の色の花を選択時、色は空欄になります。<br/>
         ※複数の花を選択した状態で色を変更した時、色に対応していない花の色は変更されません。
       </div>
-
-    <div class="sub-section">
-      <h4>回転（押し続けて回転）</h4>
-      <button id="rotateLeftBtn" type="button">左に回転</button>
-      <button id="rotateRightBtn" type="button">右に回転</button>
-    </div>
-
-    <div class="sub-section">
-      <h4>重なり順</h4>
-      <button id="zForwardBtn" onclick="bringForward()">前面に移動</button>
-      <button id="zBackwardBtn" onclick="sendBackward()">背面に移動</button>
-      <button id="zFrontBtn" onclick="bringToFront()">最前面に移動</button>
-      <button id="zBackBtn" onclick="sendToBack()">最背面に移動</button>
-    </div>
-
-    <div class="sub-section">
-      <h4>付箋/コメント</h4>
-      <button id="addPinBtn" type="button">ピンを追加</button>
-      <button id="editPinBtn" type="button" disabled>ピンを編集</button>
-      <button id="deletePinBtn" type="button" disabled>ピンを削除</button>
-      <div class="small-note">
-        ※画面内にピンを追加して、テキストを挿入することができます<br>
-        ※「ピンを追加」を押した後、キャンバスをクリックすると配置できます。<br>
+</div><div class="sub-section">
+<h4>回転（押し続けて回転）</h4>
+<button id="rotateLeftBtn" type="button">左に回転</button>
+<button id="rotateRightBtn" type="button">右に回転</button>
+</div><div class="sub-section">
+<h4>重なり順</h4>
+<button id="zForwardBtn" onclick="bringForward()">前面に移動</button>
+<button id="zBackwardBtn" onclick="sendBackward()">背面に移動</button>
+<button id="zFrontBtn" onclick="bringToFront()">最前面に移動</button>
+<button id="zBackBtn" onclick="sendToBack()">最背面に移動</button>
+</div><div class="sub-section">
+<h4>付箋/コメント</h4>
+<button id="addPinBtn" type="button">ピンを追加</button>
+<button disabled="" id="editPinBtn" type="button">ピンを編集</button>
+<button disabled="" id="deletePinBtn" type="button">ピンを削除</button>
+<div class="small-note">※画面内にピンを追加して、テキストを挿入することができます<br/>
+        ※「ピンを追加」を押した後、キャンバスをクリックすると配置できます。<br/>
         ※ピンはドラッグで移動できます。ダブルクリックで編集できます。
       </div>
-
-    <div class="sub-section">
-      <h4>保存・読み込み</h4>
-      <button onclick="saveLayout()">配置を保存</button>
-      <button id="loadLayoutBtn" type="button">保存済み配置を読み込み</button>
-      <button id="exportPngBtn" type="button">画像で出力</button>
-      <input id="layoutFileInput" type="file" accept=".json,application/json">
-    </div>
-
+</div><div class="sub-section">
+<h4>保存・読み込み</h4>
+<button onclick="saveLayout()">配置を保存</button>
+<button id="loadLayoutBtn" type="button">保存済み配置を読み込み</button>
+<button id="exportPngBtn" type="button">画像で出力</button>
+<input accept=".json,application/json" id="layoutFileInput" type="file"/>
+</div></div>
 </div>
-</div>
-
 <div id="flower-panel">
-  <h3 id="flower-panel-title">花を追加</h3>
-
-  <div id="controls">
-    <label>カテゴリ</label>
-    <select id="categorySelect"></select>
-
-    <label>花の種類</label>
-    <select id="flowerSelect"></select>
-
-    <label>色</label>
-    <select id="colorSelect"></select>
-  </div>
-
-  <div id="flower-list"></div>
+<h3 id="flower-panel-title">花を追加</h3>
+<div id="controls">
+<label>カテゴリ</label>
+<select id="categorySelect"></select>
+<label>花の種類</label>
+<select id="flowerSelect"></select>
+<label>色</label>
+<select id="colorSelect"></select>
 </div>
-
+<div id="flower-list"></div>
+</div>
 <script>
 
 
@@ -1007,7 +976,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v8";
+const APP_VERSION = "v9";
 
 
 /* =========================================================
@@ -4100,57 +4069,49 @@ window.addEventListener("load", () => {
 });
 
 </script>
-
 <!-- 操作方法モーダル -->
-<div id="helpOverlay" aria-hidden="true">
-  <div id="helpDialog" role="dialog" aria-modal="true">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-      <div style="font-weight:800; font-size:18px;">操作方法</div>
-      <button id="helpCloseBtn" type="button" style="height:36px; padding:6px 10px; cursor:pointer;">閉じる</button>
-    </div>
-
-    <div class="help-body">
-      <h4>基本</h4>
-      <ul>
-        <li>花の追加：下部の花画像を（PC：ドラッグ＆ドロップ／スマホ：タップ）</li>
-        <li>選択：クリックで単一選択</li>
-        <li>複数選択：<b>Shift + クリック</b>／<b>Ctrl + クリック</b>／<b>Shift + 範囲ドラッグ</b></li>
-        <li>範囲選択：キャンバスの空白（または背景）をドラッグ</li>
-      </ul>
-
-      <h4>スマホUI</h4>
-      <ul>
-        <li>花の移動：配置した花を指でドラッグ</li>
-        <li>複数選択：花を<b>長押し</b>で選択を追加／解除</li>
-        <li>複数移動：複数選択中の花をドラッグすると、まとめて移動</li>
-        <li>パネル：上部の「装花タイプ」「操作」から開閉（背景タップでも閉じる）</li>
-      </ul>
-
-      <h4>コピー（複製）</h4>
-      <ul>
-        <li>コピー：<b>Ctrl</b>キーを押しながらコピーしたい花画像をドラッグ<br>※複数選択した状態でも可能</li>
-      </ul>
-
-      <h4>回転・重なり順</h4>
-      <ul>
-        <li>回転：ボタンを押し続けて花画像を回転</li>
-        <li>重なり順：前面/背面/最前面/最背面ボタンで花画像の重なりを変更</li>
-      </ul>
-
-      <h4>ペン</h4>
-      <ul>
-        <li>ペン：ペンモード中は花操作不可（「ペンモードを解除」で切り替え）</li>
-        <li>消しゴム：線の一部を消去／クリア：線を全消去</li>
-      </ul>
-
-      <h4>保存・読み込み</h4>
-      <ul>
-        <li>配置を保存：花の配置と線をJSON形式ファイルで保存</li>
-        <li>保存済み配置を読み込み：JSONを読み込んで復元</li>
-      </ul>
-    </div>
-  </div>
+<div aria-hidden="true" id="helpOverlay">
+<div aria-modal="true" id="helpDialog" role="dialog">
+<div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+<div style="font-weight:800; font-size:18px;">操作方法</div>
+<button id="helpCloseBtn" style="height:36px; padding:6px 10px; cursor:pointer;" type="button">閉じる</button>
 </div>
-
+<div class="help-body">
+<h4>基本</h4>
+<ul>
+<li>花の追加：下部の花画像を（PC：ドラッグ＆ドロップ／スマホ：タップ）</li>
+<li>選択：クリックで単一選択</li>
+<li>複数選択：<b>Shift + クリック</b>／<b>Ctrl + クリック</b>／<b>Shift + 範囲ドラッグ</b></li>
+<li>範囲選択：キャンバスの空白（または背景）をドラッグ</li>
+</ul>
+<h4>スマホUI</h4>
+<ul>
+<li>花の移動：配置した花を指でドラッグ</li>
+<li>複数選択：花を<b>長押し</b>で選択を追加／解除</li>
+<li>複数移動：複数選択中の花をドラッグすると、まとめて移動</li>
+<li>パネル：上部の「装花タイプ」「操作」から開閉（背景タップでも閉じる）</li>
+</ul>
+<h4>コピー（複製）</h4>
+<ul>
+<li>コピー：<b>Ctrl</b>キーを押しながらコピーしたい花画像をドラッグ<br/>※複数選択した状態でも可能</li>
+</ul>
+<h4>回転・重なり順</h4>
+<ul>
+<li>回転：ボタンを押し続けて花画像を回転</li>
+<li>重なり順：前面/背面/最前面/最背面ボタンで花画像の重なりを変更</li>
+</ul>
+<h4>ペン</h4>
+<ul>
+<li>ペン：ペンモード中は花操作不可（「ペンモードを解除」で切り替え）</li>
+<li>消しゴム：線の一部を消去／クリア：線を全消去</li>
+</ul>
+<h4>保存・読み込み</h4>
+<ul>
+<li>配置を保存：花の配置と線をJSON形式ファイルで保存</li>
+<li>保存済み配置を読み込み：JSONを読み込んで復元</li>
+</ul>
+</div>
+</div>
+</div>
 </body>
 </html>
