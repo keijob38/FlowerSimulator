@@ -902,7 +902,7 @@ body.mobile #left-header{ display:none; }
 <button id="redoBtn" type="button">やり直す</button>
 </div><div class="sub-section" style="margin-left:0;">
 <h4>クリア</h4>
-<></><button disabled="" id="clearAllBtn" type="button">すべてクリア</button>
+<button id="deleteSelectedBtn" type="button" onclick="deleteSelected()">選択中の花を削除</button><button disabled="" id="clearAllBtn" type="button">すべてクリア</button>
 </div><div class="sub-section" style="margin-left:0;">
 <h4>色変更</h4>
 <select id="placedColorSelect"></select>
@@ -976,7 +976,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v9";
+const APP_VERSION = "v10";
 
 
 /* =========================================================
@@ -1899,6 +1899,7 @@ async function loadFlowerImages(folderName, colorName) {
   const size = getListSizeFixed();
 
   let index = 1;
+  let foundAny = false;
   while (true) {
     const encodedPath = `flowers/${folderEnc}/${index}_${colorEnc}.png`;
     const exists = await checkFileByImage(encodedPath);
@@ -1934,8 +1935,37 @@ try {
     });
 
     flowerList.appendChild(img);
+    foundAny = true;
     index++;
   }
+  // 画像が1枚も見つからない場合は、他の色でも探す（花ごとに対応色が違うケース向け）
+  if (!foundAny) {
+    const colors = getAvailableColors(folderName);
+    for (const c of colors) {
+      if (c === colorName) continue;
+      const folderEnc2 = encodeURIComponent(folderName);
+      const colorEnc2  = encodeURIComponent(c);
+      const testPath = `flowers/${folderEnc2}/1_${colorEnc2}.png`;
+      const ok = await checkFileByImage(testPath);
+      if (ok) {
+        try { colorSelect.value = c; } catch {}
+        await loadFlowerImages(folderName, c);
+        return;
+      }
+    }
+
+    // それでも見つからなければ、ヒントを表示
+    const hint = document.createElement("div");
+    hint.style.fontSize = "12px";
+    hint.style.color = "#444";
+    hint.style.padding = "6px 4px";
+    hint.innerHTML =
+      `画像が見つかりません。<br>` +
+      `配置先：flowers/${folderName}/<br>` +
+      `ファイル名例：1_赤.png , 1_オレンジ.png（色はプルダウンに合わせてください）`;
+    flowerList.appendChild(hint);
+  }
+
 }
 
 /* =========================================================
