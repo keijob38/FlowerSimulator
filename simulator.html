@@ -110,6 +110,27 @@ body {
   user-select: none;
 }
 
+/* 背景読み込み表示 */
+#bgLoading{
+  position:absolute;
+  left:12px;
+  top:12px;
+  z-index: 4; /* 花より上 */
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(2px);
+  font-weight: 700;
+  font-size: 16px;
+  color:#222;
+  display:none;
+  pointer-events:none;
+}
+body.mobile #bgLoading{
+  font-size: 18px;
+  padding: 12px 16px;
+}
+
 /* 描画レイヤー */
 #drawLayer {
   position: absolute;
@@ -649,7 +670,7 @@ body.mobile #mobileTopBar {
   height: 64px;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 6px 10px;
   z-index: 20000;
   box-sizing: border-box;
   background: rgba(255,255,255,0.92);
@@ -786,6 +807,9 @@ body.mobile #right-panel h4{ font-size: 18px; }
 body.mobile #left-panel button,
 body.mobile #right-panel button,
 body.mobile #controls button,
+/* 花追加（下）のラベル */
+body.mobile #controls label{ font-size: 22px; font-weight: 700; }
+
 body.mobile #controls select{
   font-size: 18px;
   height: 52px;
@@ -825,10 +849,15 @@ body.mobile #controls select{
 }
 
 /* スマホ上部バー（タイトル・タブボタン） */
-body.mobile #mobileTopBar .title{ font-size: 24px; }
+body.mobile #mobileTopBar .title{ font-size: 22px; }
 body.mobile #mobileTopBar button{
-  font-size: 24px;
-  height: 76px;
+  font-size: 22px;
+  height: 52px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 </style>
@@ -907,6 +936,7 @@ body.mobile #mobileTopBar button{
 <button id="gridToggleBtn" type="button">グリッド非表示（クリックで切り替え）</button>
 <div id="versionBadge"></div>
 <img alt="" id="bgLayer"/>
+  <div id="bgLoading" aria-hidden="true">背景画像を読み込み中…</div>
 <div id="selectionBox"></div>
 <canvas id="gridLayer"></canvas>
 <canvas id="drawLayer"></canvas>
@@ -1017,7 +1047,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v14";
+const APP_VERSION = "v17";
 
 
 /* =========================================================
@@ -1057,6 +1087,20 @@ function getAvailableColors(folderName) {
 ========================================================= */
 const canvas = document.getElementById("canvas");
 const bgLayer = document.getElementById("bgLayer");
+
+// 背景画像の読み込み状態表示
+(function(){
+  const loadingEl = document.getElementById("bgLoading");
+  const hideLoading = () => { if (loadingEl) loadingEl.style.display = "none"; };
+  bgLayer.addEventListener("load", () => {
+    bgLayer.style.opacity = "1";
+    hideLoading();
+  });
+  bgLayer.addEventListener("error", () => {
+    // 失敗時は読み込み表示を消して、背景は空のまま
+    hideLoading();
+  });
+})();
 const flowerList = document.getElementById("flower-list");
 const categorySelect = document.getElementById("categorySelect");
 const flowerSelect = document.getElementById("flowerSelect");
@@ -1758,13 +1802,22 @@ const STYLE_TREE = [
 let currentStyle = { group: null, type: null };
 
 function setBackgroundByTree(groupName, typeName) {
+  // 背景切替：いったん消して「読み込み中」を表示（遅延ロードでも分かりやすく）
+  const loadingEl = document.getElementById("bgLoading");
+  if (loadingEl) loadingEl.style.display = "block";
+  bgLayer.style.opacity = "0";
+  bgLayer.removeAttribute("src");
+
   if (!groupName || !typeName) {
-    bgLayer.removeAttribute("src");
+    if (loadingEl) loadingEl.style.display = "none";
     return;
   }
+
   const g = encodeURIComponent(groupName);
   const t = encodeURIComponent(typeName);
   const path = `background/${g}/${t}/background.png`;
+
+  // cache bust
   bgLayer.src = path + "?t=" + new Date().getTime();
 }
 
