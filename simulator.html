@@ -29,6 +29,12 @@ flowers/ や background/ の「フォルダ一覧を自動探索してテーブ�
 <html lang="ja">
 <head>
 <meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="description" content="結婚式場向けの装花レイアウトシミュレータ。背景（装花タイプ）を選び、花画像の配置・ペンでの描き込み・付箋（コメントピン）を作成して、印刷プレビューで出力できます。"/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="装花イメージシミュレータ"/>
+<meta property="og:description" content="背景（装花タイプ）を選び、花画像の配置・ペン・コメントピンで装花イメージを作成。印刷プレビューで出力できます。"/>
+<meta property="og:site_name" content="装花イメージシミュレータ"/>
 <title>結婚式 装花イメージシミュレーター</title>
 <style>
 :root{
@@ -823,8 +829,8 @@ body.mobile #left-header{ display:none; }
   top: 8px;
   right: 10px;
   z-index: 8500;
-  font-size: 12px;
-  color: rgba(0,0,0,0.45);
+  font-size: 30px;
+  color: rgba(0,0,0,0.30);
   user-select: none;
   pointer-events: none;
 }
@@ -860,9 +866,54 @@ body.mobile #mobileTopBar button{
   text-overflow: ellipsis;
 }
 
+
+/* ===== 追加：読み込み表示（花一覧） ===== */
+#flowerLoading{
+  display:none;
+  margin-top: 6px;
+  font-size: 14px;
+  color: #555;
+}
+#flowerLoading.show{ display:block; }
+
+/* ===== 追加：スマホ長押しメニュー抑制（可能な範囲） ===== */
+body.mobile, body.mobile *{
+  -webkit-touch-callout: none;
+}
+body.mobile .flower-item,
+body.mobile .flower-on-canvas,
+body.mobile .pin,
+body.mobile #canvas{
+  touch-action: manipulation; /* pinch-zoom を許可しつつ、単指操作はJSで制御 */
+}
+
+/* ===== 追加：スマホ横向きは案内表示（縦向き推奨） ===== */
+#rotateOverlay{
+  display:none;
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 22px;
+  box-sizing: border-box;
+}
+#rotateOverlay .box{
+  max-width: 520px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 14px;
+  padding: 18px 16px;
+}
+body.mobile.landscape #rotateOverlay{ display:flex; }
+
 </style>
 </head>
 <body>
+<div id="rotateOverlay" aria-hidden="true"><div class="box">横画面では操作しづらいため、<br/>スマホは<strong>縦向き</strong>での利用を推奨します。</div></div>
 <!-- モバイル用トップバー（スマホUI時のみ表示） -->
 <div aria-hidden="true" id="mobileTopBar">
 <button id="mobileOpenLeft" type="button">背景・ペン</button>
@@ -874,10 +925,7 @@ body.mobile #mobileTopBar button{
 <div aria-hidden="true" id="mobileModePrompt">
 <div class="box">
 <h3>スマホ用UIに切り替えますか？</h3>
-<p>
-      スマホでは画面が小さいため、パネルをスライド表示するUIが使いやすい場合があります。<br/>
-      ※この選択は端末に保存され、次回から自動で適用されます。
-    </p>
+<p>スマホで使いやすい表示に切り替えます。</p>
 <div class="row">
 <button id="chooseDesktop" type="button">PC用（そのまま）</button>
 <button id="chooseMobile" type="button">スマホ用に切替</button>
@@ -1019,6 +1067,7 @@ body.mobile #mobileTopBar button{
 <select id="colorSelect"></select>
 </div>
 <div id="flower-list"></div>
+<div id="flowerLoading" aria-hidden="true">花画像を読み込み中…</div>
 </div>
 <script>
 
@@ -1047,7 +1096,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v17";
+const APP_VERSION = "v18";
 
 
 /* =========================================================
@@ -1131,6 +1180,63 @@ const placedColorSelect = document.getElementById("placedColorSelect");
 const leftToggleBtn = document.getElementById("leftToggleBtn");
 
 let selectedFlowers = new Set();
+
+/* =========================================================
+   スマホ：2本指（ピンチ）検出
+   - 2本指のときは「花移動/ペン/ピン配置」などを一時停止して、ブラウザのピンチ操作を優先
+========================================================= */
+const __touchPointers = new Map(); // pointerId -> {x,y}
+let __multiTouchActive = false;
+
+function __updateMultiTouchFlag(){
+  __multiTouchActive = (__touchPointers.size >= 2);
+}
+
+function isMultiTouchGesture(){
+  return document.body.classList.contains("mobile") && __multiTouchActive;
+}
+
+document.addEventListener("pointerdown", (e) => {
+  if (!document.body.classList.contains("mobile")) return;
+  if (e.pointerType !== "touch") return;
+  __touchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  __updateMultiTouchFlag();
+}, { passive: true });
+
+document.addEventListener("pointerup", (e) => {
+  if (e.pointerType !== "touch") return;
+  __touchPointers.delete(e.pointerId);
+  __updateMultiTouchFlag();
+}, { passive: true });
+
+document.addEventListener("pointercancel", (e) => {
+  if (e.pointerType !== "touch") return;
+  __touchPointers.delete(e.pointerId);
+  __updateMultiTouchFlag();
+}, { passive: true });
+
+// スマホ：長押しメニュー抑制（完全抑止はブラウザ依存）
+document.addEventListener("contextmenu", (e) => {
+  if (!document.body.classList.contains("mobile")) return;
+  // 花・ピン・キャンバス上は抑制
+  const t = e.target;
+  if (t && (t.classList?.contains("flower-on-canvas") || t.classList?.contains("pin") || t.id === "canvas" || t.id === "bgLayer")) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+// スマホ：横向き判定（縦向き推奨）
+function updateMobileOrientationClass(){
+  if (!document.body.classList.contains("mobile")) {
+    document.body.classList.remove("landscape");
+    return;
+  }
+  // 画面の向き（windowサイズより screen を優先）
+  const isLandscape = (window.innerWidth > window.innerHeight);
+  document.body.classList.toggle("landscape", !!isLandscape);
+}
+window.addEventListener("resize", updateMobileOrientationClass);
+window.addEventListener("orientationchange", updateMobileOrientationClass);
 let suppressNextClick = false;
 
 // ===== コメントピン =====
@@ -1987,6 +2093,7 @@ colorSelect.addEventListener("change", async (e) => {
 ========================================================= */
 async function loadFlowerImages(folderName, colorName) {
   flowerList.innerHTML = "";
+  if (flowerLoading) flowerLoading.classList.add("show");
 
   const folderEnc = encodeURIComponent(folderName);
   const colorEnc  = encodeURIComponent(colorName);
@@ -2060,6 +2167,7 @@ try {
     flowerList.appendChild(hint);
   }
 
+  if (flowerLoading) flowerLoading.classList.remove("show");
 }
 
 /* =========================================================
@@ -2640,6 +2748,9 @@ function makeDraggable(el) {
     el.addEventListener("pointerdown", (e) => {
         if (!document.body.classList.contains("mobile")) return;
         if (e.pointerType !== "touch") return;
+        // 2本指（ピンチ）の2本目は isPrimary=false。ピンチを阻害しないため無視します。
+        if (e.isPrimary === false) return;
+        if (__multiTouchActive) return;
         e.stopPropagation();
         // iOSでのスクロール誤作動を抑える
         e.preventDefault();
@@ -2676,6 +2787,16 @@ function makeDraggable(el) {
         ensureStartPositions();
 
         const onMove = (ev) => {
+            // 2本指（ピンチ）のときは、ブラウザ操作を優先
+            if (ev.pointerType === "touch" && (__multiTouchActive || ev.isPrimary === false)) {
+                // ドラッグ中なら終了
+                if (dragging) {
+                    dragging = false;
+                    clearTimeout(pressTimer);
+                    try { el.releasePointerCapture(ev.pointerId); } catch(_) {}
+                }
+                return;
+            }
             ev.preventDefault();
             if (!dragging) return;
             const dx0 = ev.clientX - startClientX;
@@ -3647,17 +3768,23 @@ function endStroke() {
 
 drawLayer.addEventListener("pointerdown", (ev) => {
   if (!penEnabled) return;
+  // 2本指（ピンチ）を阻害しない
+  if (ev.pointerType === "touch" && (ev.isPrimary === false || __multiTouchActive)) return;
   ev.preventDefault();
   drawLayer.setPointerCapture(ev.pointerId);
   beginStroke(ev);
 });
 drawLayer.addEventListener("pointermove", (ev) => {
   if (!penEnabled) return;
+  // 2本指（ピンチ）を阻害しない
+  if (ev.pointerType === "touch" && (__multiTouchActive || ev.isPrimary === false)) return;
   ev.preventDefault();
   moveStroke(ev);
 });
 drawLayer.addEventListener("pointerup", (ev) => {
   if (!penEnabled) return;
+  // 2本指（ピンチ）を阻害しない
+  if (ev.pointerType === "touch" && (__multiTouchActive || ev.isPrimary === false)) { endStroke(); return; }
   ev.preventDefault();
   try { drawLayer.releasePointerCapture(ev.pointerId); } catch {}
   endStroke();
@@ -4147,6 +4274,7 @@ function applyUIMode(mode) {
 
   // レイアウト変化後に座標系を再計算（花/ペン/ピンの相対位置維持）
   try { relayoutCanvasesPreserveInk(); } catch {}
+  try { updateMobileOrientationClass(); } catch {}
 }
 
 // モバイル：画像長押しのブラウザメニュー（新しいタブで開く等）を抑制
@@ -4204,11 +4332,22 @@ function setupMobileUIChooser() {
     return;
   }
 
-  const likelyMobile = isLikelyTouchDevice() && isLikelyMobileByScreen();
+  const ua = (navigator.userAgent || "");
+  const isLineWebView = /Line\//i.test(ua) || /Line/i.test(ua);
+  const isMobileUA = /(Android|iPhone|iPad|iPod|Mobile)/i.test(ua);
+  // screen を優先（PCの小窓で誤判定しないため）。LINE等のアプリ内ブラウザはUAで補強。
+  const likelyMobile = isLikelyTouchDevice() && (isLikelyMobileByScreen() || isMobileUA || isLineWebView);
   if (!likelyMobile) {
     // 初回でも「スマホっぽくない」ならPCのまま（誤判定防止）
     localStorage.setItem("uiMode", "desktop");
     applyUIMode("desktop");
+    return;
+  }
+
+  // LINEアプリ内ブラウザ等では、初回からスマホUIを自動適用（誤判定の苦情が多いため）
+  if (isLineWebView) {
+    localStorage.setItem("uiMode", "mobile");
+    applyUIMode("mobile");
     return;
   }
 
