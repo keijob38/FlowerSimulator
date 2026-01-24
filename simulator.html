@@ -7,7 +7,10 @@
 
 このHTMLは file://（サーバ不要）で動作するため、ブラウザの制約により
 flowers/ や background/ の「フォルダ一覧を自動探索してテーブルを自動生成」
-は原則できません（ローカルのディレクトリ列挙が禁止されています）。
+は原則できません
+
+body.mobile #left-header{ display:none; }
+（ローカルのディレクトリ列挙が禁止されています）。
 → その代わり、以下のテーブルを編集する方式にしています。
 
 ■ 背景（装花タイプ）のツリー
@@ -653,7 +656,7 @@ body.mobile #mobileHelpOverlay{ display: block; }
 
 body.mobile {
   grid-template-columns: 1fr;
-  grid-template-rows: 56px minmax(0, 1fr) auto 220px; /* キャンバス(16:9固定) / 下バー / 花を追加 */
+  grid-template-rows: 56px minmax(0, 1fr) 220px; /* キャンバス(16:9固定) / 下バー / 花を追加 */
   align-content: start;
 }
 
@@ -668,7 +671,7 @@ body.mobile #canvas {
 }
 body.mobile #flower-panel {
   grid-column: 1 / -1;
-  grid-row: 4 / 5;
+  grid-row: 3 / 4;
   height: 220px;
   overflow: auto;
 }
@@ -710,30 +713,16 @@ body.mobile #mobileBackdrop.show { display: block; }
 
 body.mobile #left-panel,
 body.mobile #right-panel{
-  position: relative;
-  left: auto;
-  right: auto;
-  top: auto;
-  bottom: auto;
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  top: 64px;
+  bottom: calc(220px + 12px);
   width: auto;
   max-width: none;
-
-  grid-column: 1 / -1;
-  grid-row: 3 / 4; /* キャンバスと花追加の間のスロットに表示 */
-  height: auto;
-  max-height: 38vh;
-  margin: 0 10px 10px 10px;
-
-  background: rgba(255,255,255,0.96);
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 16px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-  padding: 12px;
+  margin: 0;
   overflow: auto;
-
-  display: none;
-  transform: none;
-  transition: none;
+  border-radius: 14px;
   z-index: 6000;
 }
 body.mobile #left-panel.open{ display: block; }
@@ -882,6 +871,13 @@ body.mobile #canvas{
   padding: 18px 16px;
 }
 body.mobile.landscape #rotateOverlay{ display:flex; }
+
+
+body.mobile #gridToggleBtn,
+body.mobile #penModeBadge{
+  font-size: 8px;
+  padding: 4px 7px;
+}
 
 </style>
 </head>
@@ -2147,6 +2143,15 @@ try {
    起動
 ========================================================= */
 window.addEventListener("load", async () => {
+
+  // === Mobile: help overlay should live under flower panel (not on canvas) ===
+  if (isMobileUI()) {
+    const help = document.getElementById("mobileHelpOverlay");
+    const fp = document.getElementById("flower-panel");
+    if (help && fp && help.parentElement !== fp) {
+      fp.appendChild(help);
+    }
+  }
     updateVersionBadge();
     // 起動直後は「すべてクリア」を無効（何か配置/描画が発生したら有効化）
     if (typeof clearAllBtn !== "undefined") clearAllBtn.disabled = true;
