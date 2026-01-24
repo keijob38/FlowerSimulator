@@ -560,18 +560,21 @@ body.left-collapsed #right-panel .panel-section{
 }
 #mobileHelpOverlay .mhelp-line{ margin: 2px 0; }
 body.mobile #mobileHelpOverlay{
-  grid-column: 1 / -1;
-  grid-row: 4 / 5;
-  justify-self: end;
-  align-self: start;
-  position: relative;
-  right: auto;
-  bottom: auto;
-  margin: 6px 12px 0 12px;
-  max-width: 92vw;
-  font-size: 9px;
-  padding: 6px 8px;
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 9000;
+  display: block;
+  width: min(34vw, 240px);
+  max-width: 34vw;
   background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 6px 8px;
+  font-size: 10px;
+  line-height: 1.25;
+  color: #111;
+  pointer-events: none;
 }
 
 
@@ -688,6 +691,25 @@ body.mobile #flower-panel {
 }
 
 
+
+body.mobile #controls{
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  grid-template-areas:
+    "catLabel catSelect catSelect catSelect"
+    "flowerLabel flowerSelect colorLabel colorSelect";
+  gap: 10px 12px;
+  align-items: center;
+}
+body.mobile #controls label:nth-child(1){ grid-area: catLabel; }
+body.mobile #controls select:nth-child(2){ grid-area: catSelect; }
+body.mobile #controls label:nth-child(3){ grid-area: flowerLabel; }
+body.mobile #controls select:nth-child(4){ grid-area: flowerSelect; }
+body.mobile #controls label:nth-child(5){ grid-area: colorLabel; }
+body.mobile #controls select:nth-child(6){ grid-area: colorSelect; }
+
+/* 初回だけ花一覧が見切れる対策（最低高さを確保） */
+body.mobile #flower-list{ min-height: 92px; }
 body.mobile #mobileTopBar {
   display: flex;
   position: relative;
@@ -806,7 +828,7 @@ body.mobile .flower-item{
   -webkit-user-select: none;
   user-select: none;
   -webkit-user-drag: none;
-  touch-action: manipulation;
+  touch-action: pan-y pinch-zoom;
 }
 body.mobile .flower-on-canvas,
 body.mobile .pin{
@@ -868,7 +890,7 @@ body.mobile .flower-item,
 body.mobile .flower-on-canvas,
 body.mobile .pin,
 body.mobile #canvas{
-  touch-action: manipulation; /* pinch-zoom を許可しつつ、単指操作はJSで制御 */
+  touch-action: pan-y pinch-zoom; /* pinch-zoom + 縦スクロール(未選択時) */
 }
 
 /* ===== 追加：スマホ横向きは案内表示（縦向き推奨） ===== */
@@ -1100,7 +1122,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v28";
+const APP_VERSION = "v30";
 
 
 /* =========================================================
@@ -2245,15 +2267,16 @@ try {
 ========================================================= */
 window.addEventListener("load", async () => {
 
-  // === Mobile: 操作ヒントは「花を追加」パネルの下側に配置（キャンバスを覆わない） ===
+  // === Mobile: 操作ヒント（常時表示）はキャンバス右下に固定表示 ===
   if (document.body.classList.contains("mobile")) {
     const help = document.getElementById("mobileHelpOverlay");
-    const fp = document.getElementById("flower-panel");
-    if (help && fp && help.parentElement !== fp) {
-      fp.appendChild(help);
+    if (help) {
+      if (help.parentElement !== canvas) canvas.appendChild(help);
+      help.style.display = "block";
     }
   }
-    updateVersionBadge();
+
+updateVersionBadge();
     // 起動直後は「すべてクリア」を無効（何か配置/描画が発生したら有効化）
     if (typeof clearAllBtn !== "undefined") clearAllBtn.disabled = true;
   if (!Array.isArray(FLOWER_CATEGORIES) || FLOWER_CATEGORIES.length === 0) {
