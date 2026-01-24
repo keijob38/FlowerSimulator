@@ -662,6 +662,14 @@ body.mobile {
   align-content: start;
 }
 
+
+body.mobile #canvas{
+  /* スマホ：キャンバスを16:9で確実に確保（auto行の高さが0にならないように） */
+  aspect-ratio: 16 / 9;
+  width: auto;
+  height: auto; /* JSで必要に応じて上書き */
+  min-height: 160px;
+}
 body.mobile #resizer { display: none; }
 body.mobile #canvas{
   grid-column: 1 / -1;
@@ -1081,7 +1089,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v24";
+const APP_VERSION = "v25";
 
 
 /* =========================================================
@@ -1790,8 +1798,23 @@ function scheduleRelayoutUntilStable(durationMs = 1800, intervalMs = 120) {
   stableRelayoutTO = setTimeout(tick, intervalMs);
 }
 
+
+function ensureMobileCanvasHeight() {
+  // body.mobile は grid の「auto」行で #canvas の高さが0扱いになることがあるため、
+  // ここで確実に16:9の高さを確保（背景/花/ペン/ピンの相対位置維持の前提）。
+  if (!document.body.classList.contains("mobile")) {
+    canvas.style.height = ""; // PCはCSSに任せる
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(1, rect.width);
+  const h = Math.round(w * 9 / 16);
+  canvas.style.height = h + "px";
+}
+
 function relayoutCanvasesPreserveInk() {
-  // 全画面切替などで canvas のサイズが段階的に変わることがある。
+  try { ensureMobileCanvasHeight(); } catch {}
+// 全画面切替などで canvas のサイズが段階的に変わることがある。
   // ここでは「既に保持している相対座標」を信頼して再配置し、欠けている場合のみ直前サイズで補う。
   ensureRelForAllFlowers();
   try { ensureVirtualForAllPins(); } catch {}
@@ -4267,8 +4290,11 @@ function applyUIMode(mode) {
   document.getElementById("mobileBackdrop")?.classList.remove("show");
 
   // レイアウト変化後に座標系を再計算（花/ペン/ピンの相対位置維持）
-  try { relayoutCanvasesPreserveInk(); } catch {}
-  try { updateMobileOrientationClass(); } catch {}
+  requestAnimationFrame(() => {
+    try { ensureMobileCanvasHeight(); } catch {}
+    try { relayoutCanvasesPreserveInk(); } catch {}
+    try { updateMobileOrientationClass(); } catch {}
+  });
 }
 
 // モバイル：画像長押しのブラウザメニュー（新しいタブで開く等）を抑制
