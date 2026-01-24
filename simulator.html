@@ -251,7 +251,9 @@ body.mobile #bgLoading{
   align-items: center;
   padding-bottom: 4px;
 }
-body.mobile #flower-list{ padding-top: 8px; padding-bottom: 8px; }
+body.mobile #flower-list{ padding-top: 8px; padding-bottom: 26px;   padding-right: 10px;
+}
+
 
 
 /* 下部一覧の花（ドラッグ元） */
@@ -682,7 +684,9 @@ body.mobile #flower-panel {
   grid-row: 3 / 4;
   height: 220px;
   overflow: auto;
+  border-bottom: 2px solid rgba(0,0,0,0.10);
 }
+
 
 body.mobile #mobileTopBar {
   display: flex;
@@ -728,9 +732,15 @@ body.mobile #right-panel{
   left: auto; right: auto; top: auto; bottom: auto;
   width: auto;
   max-width: none;
-  margin: 8px 10px 10px;
+  margin: 16px 10px 10px;
   overflow: auto;
   border-radius: 14px;
+  background-color: rgba(255,255,255,0.92);
+  background-image: url("ToolFrame/panel.png"); /* 任意：無ければ通常背景 */
+  background-repeat: repeat;
+  background-size: 320px 320px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+  border: 1px solid rgba(0,0,0,0.10);
   z-index: 10;
   display: none; /* open時に表示 */
 }
