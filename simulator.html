@@ -906,7 +906,8 @@ body.mobile #canvas,
 body.mobile #drawLayer,
 body.mobile .flower-on-canvas,
 body.mobile .pin{
-  touch-action: none !important;
+  /* 2本指ピンチズームを妨げない（ドラッグ/描画はJS側で制御） */
+  touch-action: manipulation;
 }
 
 
@@ -1099,7 +1100,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v25";
+const APP_VERSION = "v27";
 
 
 /* =========================================================
@@ -3823,6 +3824,9 @@ drawLayer.addEventListener("pointercancel", () => endStroke());
    ※モーダル（= 画面の上に重ねて表示する説明パネル）
 ========================================================= */
 window.addEventListener("load", () => {
+    // 重要：初期UIモード（PC/スマホ）を先に確定して、花一覧サイズなどの初期計算に反映
+    if (typeof setupMobileUIChooser === "function") setupMobileUIChooser();
+
   const helpBtn = document.getElementById("helpBtn");
   const helpOverlay = document.getElementById("helpOverlay");
   const helpCloseBtn = document.getElementById("helpCloseBtn");
@@ -4352,7 +4356,9 @@ function openMobilePanel(which) {
 }
 
 function setupMobileUIChooser() {
-  const prompt = document.getElementById("mobileModePrompt");
+  
+    if (window.__uiModeInited) return; window.__uiModeInited = true;
+const prompt = document.getElementById("mobileModePrompt");
   const chooseDesktop = document.getElementById("chooseDesktop");
   const chooseMobile = document.getElementById("chooseMobile");
 
@@ -4380,6 +4386,11 @@ function setupMobileUIChooser() {
     applyUIMode("mobile");
     return;
   }
+
+  
+  // まだ未確定の場合でも、初期描画が崩れないようにデフォルトを即時適用（ユーザー選択は後から上書き可）
+  const defaultMode = (isMobileUA || isTouchDevice) ? "mobile" : "desktop";
+  applyUIMode(defaultMode);
 
   if (prompt) {
     prompt.style.display = "flex";
