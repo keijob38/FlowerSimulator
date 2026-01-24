@@ -907,7 +907,7 @@ body.mobile #drawLayer,
 body.mobile .flower-on-canvas,
 body.mobile .pin{
   /* 2本指ピンチズームを妨げない（ドラッグ/描画はJS側で制御） */
-  touch-action: manipulation;
+  touch-action: pinch-zoom;
 }
 
 
@@ -1100,7 +1100,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v27";
+const APP_VERSION = "v28";
 
 
 /* =========================================================
@@ -1219,6 +1219,28 @@ document.addEventListener("pointercancel", (e) => {
   __updateMultiTouchFlag();
 }, { passive: true });
 
+
+// iOS/Android: ブラウザのピンチズーム中は pointerup/cancel が来ないことがあり、
+// __multiTouchActive が残って「花が動かせない」状態になるのを防ぐため、TouchEvent 側でも補正します。
+document.addEventListener("touchstart", (e) => {
+  if (!document.body.classList.contains("mobile")) return;
+  __multiTouchActive = (e.touches && e.touches.length >= 2);
+}, { passive: true });
+
+document.addEventListener("touchend", (e) => {
+  if (!document.body.classList.contains("mobile")) return;
+  __multiTouchActive = (e.touches && e.touches.length >= 2);
+  if (!e.touches || e.touches.length === 0) {
+    __touchPointers.clear();
+    __multiTouchActive = false;
+  }
+}, { passive: true });
+
+document.addEventListener("touchcancel", (e) => {
+  if (!document.body.classList.contains("mobile")) return;
+  __touchPointers.clear();
+  __multiTouchActive = false;
+}, { passive: true });
 // スマホ：長押しメニュー抑制（完全抑止はブラウザ依存）
 document.addEventListener("contextmenu", (e) => {
   if (!document.body.classList.contains("mobile")) return;
@@ -1551,6 +1573,33 @@ const presetSwatches = document.getElementById("presetSwatches");
 
 /* サイズ固定 */
 function getListSizeFixed() { return document.body.classList.contains("mobile") ? 64 : 90; }
+
+function fixFlowerListLayoutAfterLoad() {
+  const flowerPanel = document.getElementById("flower-panel");
+  const flowerList  = document.getElementById("flower-list");
+  if (!flowerPanel || !flowerList) return;
+
+  // 初回だけスクロール位置が中途半端に復元される端末があるためリセット
+  flowerPanel.scrollTop = 0;
+  flowerList.scrollLeft = 0;
+
+  // 初回だけサムネが見切れる端末対策：現時点のサイズを再適用
+  const size = getListSizeFixed();
+  flowerList.querySelectorAll("img").forEach((img) => {
+    img.style.width  = size + "px";
+    img.style.height = size + "px";
+  });
+
+  // レイアウト確定後にもう一度（アドレスバーの伸縮等の揺れ対策）
+  requestAnimationFrame(() => { flowerPanel.scrollTop = 0; });
+  setTimeout(() => {
+    const s2 = getListSizeFixed();
+    flowerList.querySelectorAll("img").forEach((img) => {
+      img.style.width  = s2 + "px";
+      img.style.height = s2 + "px";
+    });
+  }, 140);
+}
 function getCanvasSizeFixed() {
     const requested = Math.round(80 * 1.2);
     const cw = baseCanvasW || canvas.clientWidth;
@@ -2187,6 +2236,8 @@ try {
   }
 
   if (flowerLoading) flowerLoading.classList.remove("show");
+    fixFlowerListLayoutAfterLoad();
+
 }
 
 /* =========================================================
