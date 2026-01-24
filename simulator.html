@@ -543,10 +543,11 @@ body.left-collapsed #right-panel .panel-section{
   background: rgba(255,255,255,0.70);
   border: 1px solid rgba(0,0,0,0.12);
   border-radius: 12px;
-  padding: 8px 10px;
-  font-size: 12px;
+  padding: 6px 8px;
+  font-size: 10px;
   line-height: 1.2;
   color: #111;
+  max-width: 62vw;
   display: none;
 }
 #mobileHelpOverlay .mhelp-title{
@@ -574,7 +575,7 @@ body.mobile #mobileHelpOverlay{ display: block; }
   cursor: move;
   z-index: 12000;
   user-select: none;
-  font-size: 18px;
+  font-size: 10px;
 }
 .pin-on-canvas .pin-dot{
   width: 14px;
@@ -673,7 +674,7 @@ body.mobile #mobileTopBar {
   position: relative;
   grid-column: 1 / -1;
   grid-row: 2 / 3;
-  height: 64px;
+  height: 56px;
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
@@ -803,62 +804,31 @@ body.mobile .pin{
   touch-action: none;
 }
 
-/* ===== モバイル：パネル内の文字・操作を大きめに ===== */
+/* ===== モバイル：パネル内の文字・操作（※大きくしすぎない） ===== */
 body.mobile #left-panel,
-body.mobile #right-panel{ font-size: 18px; }
+body.mobile #right-panel{ font-size: 16px; }
 body.mobile #left-panel h3,
-body.mobile #right-panel h3{ font-size: 20px; }
+body.mobile #right-panel h3{ font-size: 18px; }
 body.mobile #left-panel h4,
-body.mobile #right-panel h4{ font-size: 18px; }
-body.mobile #left-panel button,
-body.mobile #right-panel button,
-body.mobile #controls button,
-/* 花追加（下）のラベル */
-body.mobile #controls label{ font-size: 22px; font-weight: 700; }
-
-body.mobile #controls select{
-  font-size: 18px;
-  height: 52px;
-}
-
-
-body.mobile #left-header{ display:none; }
-
-#versionBadge{
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  z-index: 8500;
-  font-size: 30px;
-  color: rgba(0,0,0,0.30);
-  user-select: none;
-  pointer-events: none;
-}
-@media print{
-  #versionBadge{ display:none !important; }
-}
-/* ===== モバイル：パネル内の文字・操作を大きめに ===== */
-body.mobile #left-panel,
-body.mobile #right-panel{ font-size: 26px; }
-body.mobile #left-panel h3,
-body.mobile #right-panel h3{ font-size: 30px; }
-body.mobile #left-panel h4,
-body.mobile #right-panel h4{ font-size: 26px; }
+body.mobile #right-panel h4{ font-size: 16px; }
 
 /* パネル内ボタン/プルダウン */
 body.mobile #left-panel button,
 body.mobile #right-panel button,
 body.mobile #controls button,
 body.mobile #controls select{
-  font-size: 26px;
-  height: 76px;
+  font-size: 16px;
+  height: 46px;
 }
 
+/* 花追加（下）のラベル */
+body.mobile #controls label{ font-size: 16px; font-weight: 700; }
+
 /* スマホ上部バー（タイトル・タブボタン） */
-body.mobile #mobileTopBar .title{ font-size: 22px; }
+body.mobile #mobileTopBar .title{ font-size: 20px; }
 body.mobile #mobileTopBar button{
-  font-size: 22px;
-  height: 52px;
+  font-size: 20px;
+  height: 48px;
   padding: 6px 10px;
   box-sizing: border-box;
   white-space: nowrap;
@@ -1096,7 +1066,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v18";
+const APP_VERSION = "v19";
 
 
 /* =========================================================
