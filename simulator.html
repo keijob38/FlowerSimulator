@@ -557,14 +557,19 @@ body.left-collapsed #right-panel .panel-section{
   margin-bottom: 4px;
 }
 #mobileHelpOverlay .mhelp-line{ margin: 2px 0; }
-body.mobile #mobileHelpOverlay{ display: block; }
-
-/* 花一覧の白背景は内容幅だけ（横幅いっぱいにしない） */
-#flower-list {
-  display: inline-flex;
-  width: fit-content;
-  max-width: 100%;
-  align-self: flex-start;
+body.mobile #mobileHelpOverlay{
+  grid-column: 1 / -1;
+  grid-row: 4 / 5;
+  justify-self: end;
+  align-self: start;
+  position: relative;
+  right: auto;
+  bottom: auto;
+  margin: 6px 12px 0 12px;
+  max-width: 92vw;
+  font-size: 9px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.55);
 }
 
 
@@ -653,17 +658,15 @@ body.mobile #mobileHelpOverlay{ display: block; }
 
 body.mobile {
   grid-template-columns: 1fr;
-  grid-template-rows: 56px minmax(0, 1fr) 220px; /* キャンバス(16:9固定) / 下バー / 花を追加 */
+  grid-template-rows: 56px auto 220px minmax(0, 1fr); /* 上バー / キャンバス(16:9) / 花を追加 / パネル */
   align-content: start;
 }
 
 body.mobile #resizer { display: none; }
-body.mobile #canvas {
+body.mobile #canvas{
   grid-column: 1 / -1;
   grid-row: 2 / 3;
   margin: 10px;
-  aspect-ratio: 16 / 9;
-  height: auto;
   align-self: start;
 }
 body.mobile #flower-panel {
@@ -672,6 +675,7 @@ body.mobile #flower-panel {
   height: 220px;
   overflow: auto;
 }
+
 body.mobile #mobileTopBar {
   display: flex;
   position: relative;
@@ -710,23 +714,17 @@ body.mobile #mobileBackdrop.show { display: block; }
 
 body.mobile #left-panel,
 body.mobile #right-panel{
-  position: fixed;
-  left: 10px;
-  right: 10px;
-  top: 64px;                 /* 上部バーの下 */
-  bottom: calc(220px + 12px);/* 花パネルの上 */
+  grid-column: 1 / -1;
+  grid-row: 4 / 5;
+  position: relative;
+  left: auto; right: auto; top: auto; bottom: auto;
   width: auto;
   max-width: none;
-  margin: 0;
+  margin: 8px 10px 10px;
   overflow: auto;
-
-  background: rgba(255,255,255,0.96);
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 16px;
-  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
-
-  z-index: 6000; /* mobileBackdrop(5000)より前 */
-  display: none; /* openのときだけ表示 */
+  border-radius: 14px;
+  z-index: 10;
+  display: none; /* open時に表示 */
 }
 
 body.mobile #left-header{ display:none; }
@@ -893,6 +891,10 @@ body.mobile .pin{
   touch-action: none !important;
 }
 
+
+body.mobile #left-panel.open, body.mobile #right-panel.open{ display:block; }
+
+body.mobile #mobileBackdrop{ display:none !important; }
 </style>
 </head>
 <body>
@@ -1079,7 +1081,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v23";
+const APP_VERSION = "v24";
 
 
 /* =========================================================
