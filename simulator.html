@@ -7,10 +7,7 @@
 
 このHTMLは file://（サーバ不要）で動作するため、ブラウザの制約により
 flowers/ や background/ の「フォルダ一覧を自動探索してテーブルを自動生成」
-は原則できません
-
-body.mobile #left-header{ display:none; }
-（ローカルのディレクトリ列挙が禁止されています）。
+は原則できません（ローカルのディレクトリ列挙が禁止されています）。
 → その代わり、以下のテーブルを編集する方式にしています。
 
 ■ 背景（装花タイプ）のツリー
@@ -716,15 +713,24 @@ body.mobile #right-panel{
   position: fixed;
   left: 10px;
   right: 10px;
-  top: 64px;
-  bottom: calc(220px + 12px);
+  top: 64px;                 /* 上部バーの下 */
+  bottom: calc(220px + 12px);/* 花パネルの上 */
   width: auto;
   max-width: none;
   margin: 0;
   overflow: auto;
-  border-radius: 14px;
-  z-index: 6000;
+
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 16px;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+
+  z-index: 6000; /* mobileBackdrop(5000)より前 */
+  display: none; /* openのときだけ表示 */
 }
+
+body.mobile #left-header{ display:none; }
+
 body.mobile #left-panel.open{ display: block; }
 body.mobile #right-panel.open{ display: block; }
 
@@ -877,6 +883,14 @@ body.mobile #gridToggleBtn,
 body.mobile #penModeBadge{
   font-size: 8px;
   padding: 4px 7px;
+}
+
+
+body.mobile #canvas,
+body.mobile #drawLayer,
+body.mobile .flower-on-canvas,
+body.mobile .pin{
+  touch-action: none !important;
 }
 
 </style>
@@ -1065,7 +1079,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v21";
+const APP_VERSION = "v23";
 
 
 /* =========================================================
@@ -2144,8 +2158,8 @@ try {
 ========================================================= */
 window.addEventListener("load", async () => {
 
-  // === Mobile: help overlay should live under flower panel (not on canvas) ===
-  if (isMobileUI()) {
+  // === Mobile: 操作ヒントは「花を追加」パネルの下側に配置（キャンバスを覆わない） ===
+  if (document.body.classList.contains("mobile")) {
     const help = document.getElementById("mobileHelpOverlay");
     const fp = document.getElementById("flower-panel");
     if (help && fp && help.parentElement !== fp) {
