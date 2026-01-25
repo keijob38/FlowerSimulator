@@ -1137,7 +1137,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v44";
+const APP_VERSION = "v45";
 
 
 /* =========================================================
@@ -3893,10 +3893,10 @@ function beginStroke(ev) {
   drawing = true;
   const p = getPosFromEvent(ev);
   lastX = p.x; lastY = p.y;
+
   if (inkMode !== "eraser" && penType === "watercolor") {
     watercolorLen = 0;
     watercolorInk = 1;
-    watercolorSegIndex = 0;
 
     // 筆跡（毛束）を固定生成：描画中に途切れないようにする
     const w = Math.max(1, getPenSize());
@@ -3909,7 +3909,13 @@ function beginStroke(ev) {
       const bw = Math.max(0.7, w * (0.035 + Math.random() * 0.06)); // 細い毛束
       const a = 0.16 + Math.random() * 0.26; // 基本濃さ
       const slip = (Math.random() - 0.5) * w * 0.18; // 進行方向の微ズレ
-      watercolorBristles.push({ off, bw, a, slip });
+
+      // 固定ノイズ（セグメントごとに変わらない＝途切れにくい）
+      const jitter = (Math.random() - 0.5) * w * 0.06;        // 法線方向の微ブレ
+      const alphaNoise = 0.85 + Math.random() * 0.30;         // 濃さムラ
+      const slip2 = (Math.random() - 0.5) * w * 0.03;         // 進行方向の微ムラ
+
+      watercolorBristles.push({ off, bw, a, slip, jitter, alphaNoise, slip2 });
     }
   }
 }
@@ -3980,83 +3986,95 @@ function __hash01(n) {
 }
 
 function drawWatercolor(ctx, ax, ay, bx, by, inkFactor) {
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.lineJoin = "round";
+  ctx.lineCap = "butt"; // ★セグメント端の丸い残像（円形）を出にくくする
+
   const dx = bx - ax;
   const dy = by - ay;
   const len = Math.hypot(dx, dy);
-  if (len < 0.001) return;
+  if (len < 0.001) { ctx.restore(); return; }
 
   const ux = dx / len;
   const uy = dy / len;
+  const nx = -uy;
+  const ny = ux;
 
-  // 法線（上方向=画面の上へ）を選ぶ：上側が濃く、下側が薄いグラデ
-  let nx = -uy;
-  let ny =  ux;
-  if (ny > 0) { nx = -nx; ny = -ny; } // ny<0 になる方を採用（画面上）
+  // 色（現在の色）をRGBに展開
+  const baseHex = getPenColor();
+  const rgb = hexToRgb(baseHex) || { r: 0, g: 0, b: 0 };
 
+  // 太さ
   const w = Math.max(1, getPenSize());
-  const color = getPenColor();
 
-  ctx.save();
-  ctx.globalCompositeOperation = "source-over";
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = color;
+  // インク減少（だんだん薄く）
+  watercolorLen += len;
+  const canvasMin = Math.max(200, Math.min(canvas.clientWidth, canvas.clientHeight));
+  const decay = watercolorLen / (canvasMin * 2.0); // 端から端へ一往復でほぼ消える目安
+  watercolorInk = Math.max(0, 1 - decay);
+  const ink = watercolorInk * inkFactor;
 
-  // まず薄い“面”を作る（芯が濃くならないように控えめ）
-  const washW = w * 1.15;
-  const topWash = 0.18 * inkFactor;     // 上側を少し濃く
-  const botWash = 0.06 * inkFactor;     // 下側を薄く
-  // 上側
-  ctx.globalAlpha = topWash;
-  ctx.lineWidth = washW;
+  // 「上が濃く、下が薄い」：画面Y方向で濃淡を作る
+  // セグメント中心のYを基準に、上側（y小）ほど濃くする
+  const midY = (ay + by) / 2;
+
+  // 1) ベースの「滲み（ウォッシュ）」：うっすら広がる
+  ctx.strokeStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+  ctx.lineWidth = w * 0.95;
+  ctx.globalAlpha = 0.045 * ink;
   ctx.beginPath();
-  ctx.moveTo(ax + nx * (w * 0.12), ay + ny * (w * 0.12));
-  ctx.lineTo(bx + nx * (w * 0.12), by + ny * (w * 0.12));
-  ctx.stroke();
-  // 下側
-  ctx.globalAlpha = botWash;
-  ctx.beginPath();
-  ctx.moveTo(ax - nx * (w * 0.20), ay - ny * (w * 0.20));
-  ctx.lineTo(bx - nx * (w * 0.20), by - ny * (w * 0.20));
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(bx, by);
   ctx.stroke();
 
-  // 固定の“毛束”で筆跡を連続描画（ブツ切れに見えない）
-  // 上側ほど濃く、下側ほど薄い（ユーザー要望：上濃・下薄）
-  const half = w * 0.55;
-  const segIdBase = (++watercolorSegIndex) * 1000;
+  // 2) 透明感のある層（少しだけ太め）
+  ctx.lineWidth = w * 0.72;
+  ctx.globalAlpha = 0.055 * ink;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.stroke();
+
+  // 3) 毛束（筆跡）：固定毛束で「繋がって見える」ように
+  if (!watercolorBristles || watercolorBristles.length === 0) {
+    ctx.restore();
+    return;
+  }
 
   for (let i = 0; i < watercolorBristles.length; i++) {
     const b = watercolorBristles[i];
 
-    // off：断面方向の位置（+が上側 / -が下側）
-    const t = b.off;
+    const off = (b.off || 0) + (b.jitter || 0);
+    const slip = (b.slip || 0) + (b.slip2 || 0);
 
-    // 0..1（下=0, 上=1）に正規化
-    const u = clamp01((t + half) / (2 * half));
-    // 上が濃い（u が大きいほど濃い）
-    const grad = 0.25 + 0.95 * u;
+    // ブラシ幅の濃淡：画面上（y小）ほど濃い
+    const yy = midY + off * ny; // セグメント中心から見た「この毛束のY」
+    const t = Math.max(0, Math.min(1, ((yy - midY) / (w * 1.05)) + 0.5)); // 0..1（下ほど大）
+    const grad = (1.15 * (1 - t)) + (0.55 * t);
 
-    // セグメントごとの微揺れ（連続性維持：決定的ノイズ）
-    const n1 = __hash01(segIdBase + i * 17.13);
-    const n2 = __hash01(segIdBase + i * 31.77 + 0.5);
+    const alpha = (b.a || 0.2) * ink * grad * (b.alphaNoise || 1);
 
-    const jitter = (n1 - 0.5) * w * 0.06;         // 法線方向
-    const slip = b.slip + (n2 - 0.5) * w * 0.03;  // 進行方向
+    // 断面方向の線（繋がり重視）＋方向微ズレ
+    const ox = nx * off + ux * slip;
+    const oy = ny * off + uy * slip;
 
-    const alpha = b.a * inkFactor * grad * (0.85 + (n1 * 0.30));
-    if (alpha <= 0.001) continue;
-
-    ctx.globalAlpha = alpha;
-    ctx.lineWidth = b.bw;
-
-    const ox = nx * (t + jitter) + ux * slip;
-    const oy = ny * (t + jitter) + uy * slip;
+    ctx.lineWidth = b.bw || Math.max(0.8, w * 0.05);
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
     ctx.beginPath();
     ctx.moveTo(ax + ox, ay + oy);
     ctx.lineTo(bx + ox, by + oy);
     ctx.stroke();
   }
+
+  // 4) 芯（薄め）：筆跡をまとめる
+  ctx.lineWidth = w * 0.42;
+  ctx.globalAlpha = 0.13 * ink;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.stroke();
 
   ctx.restore();
 }
