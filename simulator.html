@@ -572,8 +572,9 @@ body.mobile #mobileHelpOverlay{
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   font-size:9px;
   line-height:1.15;
-  width: min(70vw, 360px);
-  max-width: 70vw;
+  display:inline-block;
+  width:fit-content;
+  max-width: 92vw;
   color:#111;
   pointer-events:none;
 }
@@ -1023,8 +1024,8 @@ body.mobile #mobileBackdrop{ display:none !important; }
 <!-- モバイル：簡易操作ガイド（常時表示） -->
 <div aria-hidden="true" id="mobileHelpOverlay">
 <div class="mhelp-title">操作ヒント</div>
-<div class="mhelp-line">追加：花→位置タップ / 移動：ドラッグ</div>
-<div class="mhelp-line">複数：長押し / ピン：追加→タップ / ペン：描画</div>
+<div class="mhelp-line">・追加：花→位置タップ　・移動：ドラッグ</div>
+<div class="mhelp-line">・複数：長押し　・ピン：追加→タップ　・ペン：描画</div>
 </div>
 </div>
 <div id="right-panel">
@@ -1124,7 +1125,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v33";
+const APP_VERSION = "v34";
 
 
 /* =========================================================
