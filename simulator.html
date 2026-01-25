@@ -1137,7 +1137,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v43";
+const APP_VERSION = "v44";
 
 
 /* =========================================================
@@ -4056,29 +4056,6 @@ function drawWatercolor(ctx, ax, ay, bx, by, inkFactor) {
     ctx.moveTo(ax + ox, ay + oy);
     ctx.lineTo(bx + ox, by + oy);
     ctx.stroke();
-  }
-
-  // にじみ（控えめ）：上側に少しだけ“溜まり”を作る（芯が濃くなり過ぎない）
-  if (inkFactor > 0.06) {
-    const blobs = Math.min(2, Math.floor(len / 10));
-    for (let j = 0; j < blobs; j++) {
-      const t = (j + 1) / (blobs + 1);
-      const x = ax + dx * t;
-      const y = ay + dy * t;
-
-      const n = __hash01(segIdBase + 900 + j * 9.1);
-      if (n < 0.55) continue;
-
-      const px = x + nx * w * (0.20 + n * 0.08);
-      const py = y + ny * w * (0.20 + n * 0.08);
-
-      ctx.globalAlpha = 0.06 * inkFactor * (0.7 + n * 0.6);
-      const r = w * (0.18 + n * 0.20);
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-    }
   }
 
   ctx.restore();
