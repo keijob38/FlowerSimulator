@@ -251,8 +251,9 @@ body.mobile #bgLoading{
   align-items: center;
   padding-bottom: 4px;
 }
-body.mobile #flower-list{ padding-top: 8px; padding-bottom: 26px;   padding-right: 10px;
-}
+body.mobile #flower-list{ padding-top: 14px; padding-bottom: 30px; padding-right: 12px; align-items:center; }
+body.mobile .flower-item img{ display:block; }
+
 
 
 
@@ -560,22 +561,25 @@ body.left-collapsed #right-panel .panel-section{
 }
 #mobileHelpOverlay .mhelp-line{ margin: 1px 0; }
 body.mobile #mobileHelpOverlay{
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 9000;
-  display: block;
-  width: min(34vw, 240px);
-  max-width: 34vw;
-  background: rgba(255,255,255,0.55);
+  position:absolute;
+  right:10px;
+  bottom:10px;
+  z-index:55;
+  padding:8px 10px;
+  border-radius:12px;
+  background: rgba(255,255,255,0.75);
   border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 12px;
-  padding: 6px 8px;
-  font-size: 10px;
-  line-height: 1.25;
-  color: #111;
-  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  font-size:9px;
+  line-height:1.15;
+  width: min(70vw, 360px);
+  max-width: 70vw;
+  color:#111;
+  pointer-events:none;
 }
+body.mobile #mobileHelpOverlay .mhelp-title{ font-size:9px; margin-bottom:4px; }
+body.mobile #mobileHelpOverlay .mhelp-line{ font-size:8px; line-height:1.15; white-space:nowrap; }
+
 
 
 #penEnableBtn{ width:100%; box-sizing:border-box; }
@@ -709,7 +713,8 @@ body.mobile #controls label:nth-child(5){ grid-area: colorLabel; }
 body.mobile #controls select:nth-child(6){ grid-area: colorSelect; }
 
 /* 初回だけ花一覧が見切れる対策（最低高さを確保） */
-body.mobile #flower-list{ min-height: 92px; }
+body.mobile #flower-list{ padding-top: 14px; padding-bottom: 30px; padding-right: 12px; align-items:center; }
+
 body.mobile #mobileTopBar {
   display: flex;
   position: relative;
@@ -922,14 +927,16 @@ body.mobile #penModeBadge{
 }
 
 
-body.mobile #canvas,
+body.mobile #canvas{
+  /* 2本指ピンチズーム＋（拡大時の）パンを許可 */
+  touch-action: pan-x pan-y pinch-zoom;
+}
 body.mobile #drawLayer,
 body.mobile .flower-on-canvas,
 body.mobile .pin{
-  /* 2本指ピンチズームを妨げない（ドラッグ/描画はJS側で制御） */
-  touch-action: pinch-zoom;
+  /* 花のドラッグ／ペン描画はJSで制御するため、ブラウザのスクロールを抑止 */
+  touch-action: none;
 }
-
 
 body.mobile #left-panel.open, body.mobile #right-panel.open{ display:block; }
 
@@ -1016,9 +1023,8 @@ body.mobile #mobileBackdrop{ display:none !important; }
 <!-- モバイル：簡易操作ガイド（常時表示） -->
 <div aria-hidden="true" id="mobileHelpOverlay">
 <div class="mhelp-title">操作ヒント</div>
-<div class="mhelp-line">・追加：花をタップ → 置きたい位置をタップ / 移動：ドラッグ</div>
-<div class="mhelp-line">・複数選択：長押しで追加/解除 / ピン：ピンを追加→タップ</div>
-<div class="mhelp-line">・ペン：ペンモードを有効化→描画</div>
+<div class="mhelp-line">追加：花→位置タップ / 移動：ドラッグ</div>
+<div class="mhelp-line">複数：長押し / ピン：追加→タップ / ペン：描画</div>
 </div>
 </div>
 <div id="right-panel">
@@ -1118,7 +1124,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v31";
+const APP_VERSION = "v32";
 
 
 /* =========================================================
