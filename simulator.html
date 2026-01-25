@@ -989,7 +989,8 @@ body.mobile #mobileBackdrop{ display:none !important; }
           <div class="penTypeWrap">
             <div class="paletteTitle">ペンの種類</div>
             <div class="pen-row" style="margin-top:6px;">
-              <button id="brushBtn" type="button" class="active">ブラシ</button>
+              <button id="penTypePenBtn" type="button" class="active">ペン</button>
+              <button id="brushBtn" type="button">ブラシ</button>
               <button id="watercolorBtn" type="button">水彩</button>
             </div>
           </div>
@@ -1136,7 +1137,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v37";
+const APP_VERSION = "v38";
 
 
 /* =========================================================
@@ -1604,6 +1605,7 @@ const colorPreview = document.getElementById("colorPreview");
 const wBar = document.getElementById("wBar");
 const wVal = document.getElementById("wVal");
 
+const penTypePenBtn = document.getElementById("penTypePenBtn");
 const brushBtn = document.getElementById("brushBtn");
 const watercolorBtn = document.getElementById("watercolorBtn");
 const svCanvas = document.getElementById("svCanvas");
@@ -3639,7 +3641,7 @@ wBar.addEventListener("input", syncWidthUI);
 
 /* ===== ペン色選択 ===== */
 let currentColor = "#000000";
-let penType = "brush"; // "brush" | "watercolor"
+let penType = "pen"; // "brush" | "watercolor"
 let hue = parseInt(hueBar.value, 10) || 0;
 let sat = 1.0;
 let val = 1.0;
@@ -3709,13 +3711,16 @@ function setCurrentColor(hex) {
 function getCurrentColorCss() { return currentColor; }
 
 function setPenType(type){
-  penType = (type === "watercolor") ? "watercolor" : "brush";
+  penType = (type === "brush" || type === "watercolor" || type === "pen") ? type : "pen";
+  if (penTypePenBtn) penTypePenBtn.classList.toggle("active", penType === "pen");
   if (brushBtn) brushBtn.classList.toggle("active", penType === "brush");
   if (watercolorBtn) watercolorBtn.classList.toggle("active", penType === "watercolor");
+
   // 種類を選んだらペンモードにする
-  setPenEnabled(true);
-  setPenTool("pen");
+  if (!penEnabled) setPenEnabled(true);
+  if (inkMode !== "pen") setInkMode("pen");
 }
+if (penTypePenBtn) penTypePenBtn.addEventListener("click", () => setPenType("pen"));
 if (brushBtn) brushBtn.addEventListener("click", () => setPenType("brush"));
 if (watercolorBtn) watercolorBtn.addEventListener("click", () => setPenType("watercolor"));
 
@@ -3879,30 +3884,138 @@ function beginStroke(ev) {
   lastX = p.x; lastY = p.y;
 }
 
+
+function drawSolidLine(ctx, x0, y0, x1, y1){
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = penColor;
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = penSize;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSpray(ctx, x0, y0, x1, y1){
+  const dx = x1 - x0, dy = y1 - y0;
+  const dist = Math.hypot(dx, dy);
+  const steps = Math.max(1, Math.floor(dist / 2));
+  const spread = penSize * 0.9; // ふわっと広がる
+  const density = Math.max(6, Math.floor(penSize * 1.2)); // 点の密度
+
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = penColor;
+  ctx.globalAlpha = 0.35;
+
+  for (let i = 0; i <= steps; i++){
+    const t = i / steps;
+    const cx = x0 + dx * t;
+    const cy = y0 + dy * t;
+
+    for (let j = 0; j < density; j++){
+      const ang = Math.random() * Math.PI * 2;
+      const r = Math.random() * spread;
+      const px = cx + Math.cos(ang) * r;
+      const py = cy + Math.sin(ang) * r;
+      const rad = Math.max(0.5, (Math.random() * penSize) / 6);
+      ctx.beginPath();
+      ctx.arc(px, py, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawWatercolor(ctx, x0, y0, x1, y1){
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = penColor;
+
+  // ① 薄いにじみ（太く・低アルファ）
+  ctx.globalAlpha = 0.14;
+  ctx.lineWidth = penSize * 2.2;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+
+  // ② 中間の濃さ（少しだけズレる）
+  ctx.globalAlpha = 0.28;
+  ctx.lineWidth = penSize * 1.4;
+  const jx = (Math.random() - 0.5) * 0.6;
+  const jy = (Math.random() - 0.5) * 0.6;
+  ctx.beginPath();
+  ctx.moveTo(x0 + jx, y0 + jy);
+  ctx.lineTo(x1 + jx, y1 + jy);
+  ctx.stroke();
+
+  // ③ 芯の線（やや濃い）
+  ctx.globalAlpha = 0.45;
+  ctx.lineWidth = penSize * 0.9;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+
+  // ④ 絵の具の溜まり（小さなにじみ点）
+  const dx = x1 - x0, dy = y1 - y0;
+  const dist = Math.hypot(dx, dy);
+  const n = Math.min(8, Math.max(2, Math.floor(dist / 12)));
+  ctx.fillStyle = penColor;
+  ctx.globalAlpha = 0.10;
+  for (let i = 0; i < n; i++){
+    const t = (i + 0.5) / n;
+    const cx = x0 + dx * t;
+    const cy = y0 + dy * t;
+    const offx = (Math.random() - 0.5) * penSize * 0.7;
+    const offy = (Math.random() - 0.5) * penSize * 0.7;
+    const rad = penSize * (0.25 + Math.random() * 0.25);
+    ctx.beginPath();
+    ctx.arc(cx + offx, cy + offy, rad, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
 function moveStroke(ev) {
   if (!drawing) return;
   const ctx = getInkCtx();
   if (!ctx) return;
 
   const p = getPosFromEvent(ev);
-  const width = Math.max(1, parseInt(wBar.value, 10) || 6);
 
-  ctx.save();
-  ctx.lineWidth = width;
-
+  // 消しゴム
   if (inkMode === "eraser") {
+    ctx.save();
     ctx.globalCompositeOperation = "destination-out";
-    ctx.strokeStyle = "rgba(0,0,0,1)";
+    ctx.lineWidth = penSize * 2.0;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.restore();
   } else {
-    ctx.globalCompositeOperation = "source-over";
-    ctx.strokeStyle = getCurrentColorCss();
+    // ペン / ブラシ / 水彩
+    if (penType === "brush") {
+      drawSpray(ctx, lastX, lastY, p.x, p.y);
+    } else if (penType === "watercolor") {
+      drawWatercolor(ctx, lastX, lastY, p.x, p.y);
+    } else {
+      // pen
+      drawSolidLine(ctx, lastX, lastY, p.x, p.y);
+    }
   }
-
-  ctx.beginPath();
-  ctx.moveTo(lastX, lastY);
-  ctx.lineTo(p.x, p.y);
-  ctx.stroke();
-  ctx.restore();
 
   lastX = p.x; lastY = p.y;
   inkDirty = true;
