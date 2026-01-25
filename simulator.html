@@ -986,6 +986,15 @@ body.mobile #mobileBackdrop{ display:none !important; }
 <input id="wBar" max="30" min="1" style="flex:1;" type="range" value="6"/>
 <div id="wVal" style="font-size:12px; width:32px; text-align:right;">6</div>
 </div>
+          <div class="penTypeWrap">
+            <div class="paletteTitle">ペンの種類</div>
+            <div class="pen-row" style="margin-top:6px;">
+              <button id="brushBtn" type="button" class="active">ブラシ</button>
+              <button id="watercolorBtn" type="button">水彩</button>
+            </div>
+          </div>
+
+
 <div id="colorPickerWrap">
 <div>
 <div class="paletteTitle">現在の色</div>
@@ -1063,6 +1072,7 @@ body.mobile #mobileBackdrop{ display:none !important; }
 <h4>回転（押し続けて回転）</h4>
 <button id="rotateLeftBtn" type="button">左に回転</button>
 <button id="rotateRightBtn" type="button">右に回転</button>
+            <button id="flipBtn" type="button">反転</button>
 </div><div class="sub-section">
 <h4>重なり順</h4>
 <button id="zForwardBtn" onclick="bringForward()">前面に移動</button>
@@ -1126,7 +1136,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v36";
+const APP_VERSION = "v37";
 
 
 /* =========================================================
@@ -1196,6 +1206,7 @@ const redoBtn = document.getElementById("redoBtn");
 const gridToggleBtn = document.getElementById("gridToggleBtn");
 const rotateLeftBtn = document.getElementById("rotateLeftBtn");
 const rotateRightBtn = document.getElementById("rotateRightBtn");
+const flipBtn = document.getElementById("flipBtn");
 const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
 const zForwardBtn = document.getElementById("zForwardBtn");
 const zBackwardBtn = document.getElementById("zBackwardBtn");
@@ -1593,6 +1604,8 @@ const colorPreview = document.getElementById("colorPreview");
 const wBar = document.getElementById("wBar");
 const wVal = document.getElementById("wVal");
 
+const brushBtn = document.getElementById("brushBtn");
+const watercolorBtn = document.getElementById("watercolorBtn");
 const svCanvas = document.getElementById("svCanvas");
 const hueBar = document.getElementById("hueBar");
 const presetSwatches = document.getElementById("presetSwatches");
@@ -2977,14 +2990,21 @@ let rotateRAF = null;
 let rotateDir = 0;
 let lastRotateTs = 0;
 
+function applyFlowerTransform(el){
+  if (!el) return;
+  const r = parseFloat(el.dataset.rotate || "0") || 0;
+  const s = parseFloat(el.dataset.scale || "1") || 1;
+  const fx = (el.dataset.flipX === "1") ? -1 : 1;
+  el.style.transform = `rotate(${r}deg) scale(${s * fx}, ${s})`;
+}
+
 function stepRotate(deltaDeg) {
   if (selectedFlowers.size === 0) return;
   selectedFlowers.forEach(el => {
     let current = parseFloat(el.dataset.rotate || "0");
     current += deltaDeg;
     el.dataset.rotate = String(current);
-    const s = el.dataset.scale || "1";
-    el.style.transform = `rotate(${current}deg) scale(${s})`;
+    applyFlowerTransform(el);
   });
 }
 function rotateLoop(ts) {
@@ -3030,6 +3050,16 @@ function attachHoldRotate(btn, dir) {
 attachHoldRotate(rotateLeftBtn, -1);
 attachHoldRotate(rotateRightBtn, +1);
 
+flipBtn.addEventListener("click", () => {
+  if (selectedFlowers.size === 0) return;
+  pushHistory();
+  selectedFlowers.forEach(el => {
+    el.dataset.flipX = (el.dataset.flipX === "1") ? "0" : "1";
+    applyFlowerTransform(el);
+  });
+  markDirty();
+  updateSelectionDependentUI();
+});
 /* =========================================================
    削除/重なり順
 ========================================================= */
@@ -3609,6 +3639,7 @@ wBar.addEventListener("input", syncWidthUI);
 
 /* ===== ペン色選択 ===== */
 let currentColor = "#000000";
+let penType = "brush"; // "brush" | "watercolor"
 let hue = parseInt(hueBar.value, 10) || 0;
 let sat = 1.0;
 let val = 1.0;
@@ -3676,6 +3707,18 @@ function setCurrentColor(hex) {
 }
 
 function getCurrentColorCss() { return currentColor; }
+
+function setPenType(type){
+  penType = (type === "watercolor") ? "watercolor" : "brush";
+  if (brushBtn) brushBtn.classList.toggle("active", penType === "brush");
+  if (watercolorBtn) watercolorBtn.classList.toggle("active", penType === "watercolor");
+  // 種類を選んだらペンモードにする
+  setPenEnabled(true);
+  setPenTool("pen");
+}
+if (brushBtn) brushBtn.addEventListener("click", () => setPenType("brush"));
+if (watercolorBtn) watercolorBtn.addEventListener("click", () => setPenType("watercolor"));
+
 
 function renderPresets() {
   presetSwatches.innerHTML = "";
@@ -4251,6 +4294,7 @@ function exportAsPrintable() {
       vh: parseFloat(el.dataset.vh || "0"),
       rotate: parseFloat(el.dataset.rotate || "0"),
       scale: parseFloat(el.dataset.scale || "1"),
+      flipX: (el.dataset.flipX || "0"),
       z: parseInt(el.style.zIndex || "1", 10) || 1
     }))
     .sort((a,b) => a.z - b.z);
@@ -4281,8 +4325,9 @@ function exportAsPrintable() {
     const cy = f.vy + f.vh / 2;
     const s  = isFinite(f.scale) ? f.scale : 1;
     const r  = isFinite(f.rotate) ? f.rotate : 0;
+    const fx = (String(f.flipX || "0") === "1") ? -1 : 1;
     svgParts.push(
-      `<g transform="translate(${cx} ${cy}) rotate(${r}) scale(${s}) translate(${-f.vw/2} ${-f.vh/2})">` +
+      `<g transform="translate(${cx} ${cy}) rotate(${r}) scale(${fx*s} ${s}) translate(${-f.vw/2} ${-f.vh/2})">` +
       `<image href="${esc(f.src)}" x="0" y="0" width="${f.vw}" height="${f.vh}" preserveAspectRatio="xMidYMid meet"/>` +
       `</g>`
     );
@@ -4543,6 +4588,7 @@ window.addEventListener("load", () => {
 <h4>回転・重なり順</h4>
 <ul>
 <li>回転：ボタンを押し続けて花画像を回転</li>
+        <li>反転：反転ボタンで花画像を反転</li>
 <li>重なり順：前面/背面/最前面/最背面ボタンで花画像の重なりを変更</li>
 </ul>
 <h4>ペン</h4>
