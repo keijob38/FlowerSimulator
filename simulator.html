@@ -1137,7 +1137,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v46";
+const APP_VERSION = "v47";
 
 
 /* =========================================================
@@ -3950,7 +3950,7 @@ function drawSpray(ctx, x0, y0, x1, y1){
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = color;
-  ctx.globalAlpha = 0.45;
+  ctx.globalAlpha = 0.30; // ★濃さを 2/3 程度に調整
 
   for (let i = 0; i <= steps; i++){
     const t = i / steps;
@@ -4009,10 +4009,8 @@ function drawWatercolor(ctx, ax, ay, bx, by, inkFactor) {
   const w = Math.max(1, getPenSize());
 
   // インク減少（だんだん薄く）
-  watercolorLen += len;
-  const canvasMin = Math.max(200, Math.min(canvas.clientWidth, canvas.clientHeight));
-  const decay = watercolorLen / (canvasMin * 5.0); // 端から端へ一往復でほぼ消える目安（長めに調整）nk = Math.max(0, 1 - decay);
-  const ink = watercolorInk * inkFactor;
+  // moveStroke 側で計算した inkFactor(0..1) をそのまま使用（ここでは二重計算しない）
+  const ink = Math.max(0, Math.min(1, inkFactor));
 
   // 「上が濃く、下が薄い」：画面Y方向で濃淡を作る
   // セグメント中心のYを基準に、上側（y小）ほど濃くする
@@ -4106,7 +4104,7 @@ function moveStroke(ev) {
     } else if (penType === "watercolor") {
       const seg = Math.hypot(p.x - lastX, p.y - lastY);
     watercolorLen += seg;
-    const total = 2 * Math.max(canvas.clientWidth, canvas.clientHeight);
+    const total = 6 * Math.max(canvas.clientWidth, canvas.clientHeight); // ★描ける距離を約3倍に
     watercolorInk = Math.max(0, 1 - (watercolorLen / Math.max(1, total)));
     drawWatercolor(ctx, lastX, lastY, p.x, p.y, watercolorInk);
     } else {
