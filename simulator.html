@@ -1137,7 +1137,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v45";
+const APP_VERSION = "v46";
 
 
 /* =========================================================
@@ -4011,8 +4011,7 @@ function drawWatercolor(ctx, ax, ay, bx, by, inkFactor) {
   // インク減少（だんだん薄く）
   watercolorLen += len;
   const canvasMin = Math.max(200, Math.min(canvas.clientWidth, canvas.clientHeight));
-  const decay = watercolorLen / (canvasMin * 2.0); // 端から端へ一往復でほぼ消える目安
-  watercolorInk = Math.max(0, 1 - decay);
+  const decay = watercolorLen / (canvasMin * 5.0); // 端から端へ一往復でほぼ消える目安（長めに調整）nk = Math.max(0, 1 - decay);
   const ink = watercolorInk * inkFactor;
 
   // 「上が濃く、下が薄い」：画面Y方向で濃淡を作る
