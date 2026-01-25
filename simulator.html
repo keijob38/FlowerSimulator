@@ -1137,7 +1137,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v38";
+const APP_VERSION = "v39";
 
 
 /* =========================================================
@@ -3710,6 +3710,12 @@ function setCurrentColor(hex) {
 
 function getCurrentColorCss() { return currentColor; }
 
+function getPenColor() { return getCurrentColorCss() || "#000000"; }
+function getPenSize() {
+  const v = parseFloat(wBar?.value);
+  return Number.isFinite(v) ? Math.max(1, v) : 6;
+}
+
 function setPenType(type){
   penType = (type === "brush" || type === "watercolor" || type === "pen") ? type : "pen";
   if (penTypePenBtn) penTypePenBtn.classList.toggle("active", penType === "pen");
@@ -3890,9 +3896,9 @@ function drawSolidLine(ctx, x0, y0, x1, y1){
   ctx.globalCompositeOperation = "source-over";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = penColor;
+  ctx.strokeStyle = getPenColor();
   ctx.globalAlpha = 1;
-  ctx.lineWidth = penSize;
+  ctx.lineWidth = getPenSize();
   ctx.beginPath();
   ctx.moveTo(x0, y0);
   ctx.lineTo(x1, y1);
@@ -3904,12 +3910,12 @@ function drawSpray(ctx, x0, y0, x1, y1){
   const dx = x1 - x0, dy = y1 - y0;
   const dist = Math.hypot(dx, dy);
   const steps = Math.max(1, Math.floor(dist / 2));
-  const spread = penSize * 0.9; // ふわっと広がる
-  const density = Math.max(6, Math.floor(penSize * 1.2)); // 点の密度
+  const spread = getPenSize() * 0.9; // ふわっと広がる
+  const density = Math.max(6, Math.floor(getPenSize() * 1.2)); // 点の密度
 
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = penColor;
+  ctx.fillStyle = getPenColor();
   ctx.globalAlpha = 0.35;
 
   for (let i = 0; i <= steps; i++){
@@ -3922,7 +3928,7 @@ function drawSpray(ctx, x0, y0, x1, y1){
       const r = Math.random() * spread;
       const px = cx + Math.cos(ang) * r;
       const py = cy + Math.sin(ang) * r;
-      const rad = Math.max(0.5, (Math.random() * penSize) / 6);
+      const rad = Math.max(0.5, (Math.random() * getPenSize()) / 6);
       ctx.beginPath();
       ctx.arc(px, py, rad, 0, Math.PI * 2);
       ctx.fill();
@@ -3937,11 +3943,11 @@ function drawWatercolor(ctx, x0, y0, x1, y1){
   ctx.globalCompositeOperation = "source-over";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = penColor;
+  ctx.strokeStyle = getPenColor();
 
   // ① 薄いにじみ（太く・低アルファ）
   ctx.globalAlpha = 0.14;
-  ctx.lineWidth = penSize * 2.2;
+  ctx.lineWidth = getPenSize() * 2.2;
   ctx.beginPath();
   ctx.moveTo(x0, y0);
   ctx.lineTo(x1, y1);
@@ -3949,7 +3955,7 @@ function drawWatercolor(ctx, x0, y0, x1, y1){
 
   // ② 中間の濃さ（少しだけズレる）
   ctx.globalAlpha = 0.28;
-  ctx.lineWidth = penSize * 1.4;
+  ctx.lineWidth = getPenSize() * 1.4;
   const jx = (Math.random() - 0.5) * 0.6;
   const jy = (Math.random() - 0.5) * 0.6;
   ctx.beginPath();
@@ -3959,7 +3965,7 @@ function drawWatercolor(ctx, x0, y0, x1, y1){
 
   // ③ 芯の線（やや濃い）
   ctx.globalAlpha = 0.45;
-  ctx.lineWidth = penSize * 0.9;
+  ctx.lineWidth = getPenSize() * 0.9;
   ctx.beginPath();
   ctx.moveTo(x0, y0);
   ctx.lineTo(x1, y1);
@@ -3969,15 +3975,15 @@ function drawWatercolor(ctx, x0, y0, x1, y1){
   const dx = x1 - x0, dy = y1 - y0;
   const dist = Math.hypot(dx, dy);
   const n = Math.min(8, Math.max(2, Math.floor(dist / 12)));
-  ctx.fillStyle = penColor;
+  ctx.fillStyle = getPenColor();
   ctx.globalAlpha = 0.10;
   for (let i = 0; i < n; i++){
     const t = (i + 0.5) / n;
     const cx = x0 + dx * t;
     const cy = y0 + dy * t;
-    const offx = (Math.random() - 0.5) * penSize * 0.7;
-    const offy = (Math.random() - 0.5) * penSize * 0.7;
-    const rad = penSize * (0.25 + Math.random() * 0.25);
+    const offx = (Math.random() - 0.5) * getPenSize() * 0.7;
+    const offy = (Math.random() - 0.5) * getPenSize() * 0.7;
+    const rad = getPenSize() * (0.25 + Math.random() * 0.25);
     ctx.beginPath();
     ctx.arc(cx + offx, cy + offy, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -3997,7 +4003,7 @@ function moveStroke(ev) {
   if (inkMode === "eraser") {
     ctx.save();
     ctx.globalCompositeOperation = "destination-out";
-    ctx.lineWidth = penSize * 2.0;
+    ctx.lineWidth = getPenSize() * 2.0;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
