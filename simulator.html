@@ -1124,7 +1124,7 @@ const FLOWER_CATEGORIES = [
 ];
 
 // アプリ表示バージョン（キャンバス右上に表示）
-const APP_VERSION = "v32";
+const APP_VERSION = "v33";
 
 
 /* =========================================================
@@ -4361,9 +4361,20 @@ function isLikelyMobileByScreen() {
   return shortSide <= 900;
 }
 
+
+function syncMobileHelpOverlay() {
+  const help = document.getElementById("mobileHelpOverlay");
+  if (!help) return;
+  const show = document.body.classList.contains("mobile");
+  help.style.display = show ? "block" : "none";
+}
+
 function applyUIMode(mode) {
   const isMobile = (mode === "mobile");
   document.body.classList.toggle("mobile", isMobile);
+
+  // スマホ専用の常時ヒント表示
+  syncMobileHelpOverlay();
 
   // 花追加タイトル（PC/スマホで文言を切替）
   const fpTitle = document.getElementById("flower-panel-title");
@@ -4465,7 +4476,7 @@ const prompt = document.getElementById("mobileModePrompt");
 
   
   // まだ未確定の場合でも、初期描画が崩れないようにデフォルトを即時適用（ユーザー選択は後から上書き可）
-  const defaultMode = (isMobileUA || isTouchDevice) ? "mobile" : "desktop";
+  const defaultMode = (isMobileUA || likelyMobile) ? "mobile" : "desktop";
   applyUIMode(defaultMode);
 
   if (prompt) {
